@@ -402,7 +402,13 @@ function applySettingsData(data) {
     if (typeof data.volume !== 'undefined') state.settings.volume = data.volume;
     if (data.totalPoints) state.settings.totalPoints = data.totalPoints;
     if (Array.isArray(data.prizePlaces)) state.settings.prizePlaces = data.prizePlaces;
-    if (data.tournament) { state.tournament = { ...state.tournament, ...data.tournament};
+
+    if (data.tournament) {
+        state.tournament = {
+            ...state.tournament,
+            ...data.tournament
+        };
+    }
 }
 
 /************************************************************
@@ -2689,17 +2695,33 @@ function resetAll() {
  * EVENTS
  ************************************************************/
 
-function bindEvents() {
-    document.addEventListener('click', e => {
+   function bindEvents() {
+     document.addEventListener('click', e => {
+        const navBtn = e.target.closest('.nav-btn');
+
+        if (navBtn) {
+            const page = navBtn.dataset.page;
+
+            if (page) {
+                e.preventDefault();
+                showPage(page);
+                return;
+            }
+        }
+
         const tab = e.target.closest('.tournament-tab');
-        if (!tab) return;
 
-        const tabName = tab.dataset.tournamentTab;
-        if (!tabName) return;
+        if (tab) {
+            const tabName = tab.dataset.tournamentTab;
 
-        e.preventDefault();
-        setTournamentTab(tabName);
+            if (tabName) {
+                e.preventDefault();
+                setTournamentTab(tabName);
+                return;
+            }
+        }
     });
+
     $('startBtn').onclick = startTimer;
     $('pauseBtn').onclick = pauseTimer;
     $('resetBtn').onclick = resetTimer;
