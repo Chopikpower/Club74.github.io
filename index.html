@@ -1064,7 +1064,7 @@
             background: linear-gradient(135deg, var(--card-bg), var(--secondary-color));
         }
 
-        /* РЎРєСЂС‹РІР°РµРј РєРЅРѕРїРєРё СѓРїСЂР°РІР»РµРЅРёСЏ РґР»СЏ Р“РѕСЃС‚СЏ */
+        /* Скрываем кнопки управления для Гостя */
         .guest-view .timer-controls {
             display: none !important;
         }
@@ -1150,27 +1150,27 @@
 </head>
 <body>
     <div class="header">
-        <div class="logo">рџѓЏ Poker Timer</div>
+        <div class="logo">🃏 Poker Timer</div>
         <div class="user-info">
-            <span class="user-role" id="userRole">Р“РѕСЃС‚СЊ</span>
-            <button class="btn btn-warning nav-btn" data-page="ratingPage" id="ratingBtn">рџЏ† Р РµР№С‚РёРЅРі</button>
-            <button class="btn btn-success nav-btn" data-page="gridPage" id="gridBtn">рџ“Љ РЎРµС‚РєР°</button>
-            <button class="btn btn-secondary nav-btn" data-page="editorPage" id="editorBtn" style="display:none;">рџ“ќ Р РµРґР°РєС‚РѕСЂ</button>
-            <button class="btn btn-primary" id="loginBtn">Р’С…РѕРґ РґР»СЏ Р°РґРјРёРЅР°</button>
-            <button class="btn btn-secondary" id="logoutBtn" style="display:none;">Р’С‹С…РѕРґ</button>
+            <span class="user-role" id="userRole">Гость</span>
+            <button class="btn btn-warning nav-btn" data-page="ratingPage" id="ratingBtn">🏆 Рейтинг</button>
+            <button class="btn btn-success nav-btn" data-page="gridPage" id="gridBtn">📊 Сетка</button>
+            <button class="btn btn-secondary nav-btn" data-page="editorPage" id="editorBtn" style="display:none;">📝 Редактор</button>
+            <button class="btn btn-primary" id="loginBtn">Вход для админа</button>
+            <button class="btn btn-secondary" id="logoutBtn" style="display:none;">Выход</button>
         </div>
     </div>
 
     <div class="page active" id="timerPage">
         <div class="container">
             <div class="timer-wrapper">
-                <div class="level-display" id="levelDisplay">РЈР РћР’Р•РќР¬ <span id="currentLevel">1</span></div>
+                <div class="level-display" id="levelDisplay">УРОВЕНЬ <span id="currentLevel">1</span></div>
                 <div class="blinds-display">
                     <span class="blinds-values"><span id="smallBlind">100</span> / <span id="bigBlind">200</span></span>
                     <span class="ante-label">Ante</span>
                     <span class="ante-value" id="anteDisplay">0</span>
                 </div>
-                <div class="timer-time" id="timerDisplay">12:00</div>
+                <div class="timer-time" id="timerDisplay">15:00</div>
                 
                 <div class="progress-container" id="progressContainer">
                     <div class="progress-bar">
@@ -1178,37 +1178,37 @@
                     </div>
                     <div class="progress-time">
                         <span id="elapsedTime">00:00</span>
-                        <span id="totalTime">12:00</span>
+                        <span id="totalTime">15:00</span>
                     </div>
                 </div>
 
-                <div class="next-level">РЎР»РµРґСѓСЋС‰РёР№ СѓСЂРѕРІРµРЅСЊ: <strong id="nextLevelInfo">200 / 400</strong></div>
+                <div class="next-level">Следующий уровень: <strong id="nextLevelInfo">200 / 400</strong></div>
 
                 <div class="timer-controls" id="timerControls">
-                    <button class="btn btn-primary" id="startBtn">в–¶ РЎС‚Р°СЂС‚</button>
-                    <button class="btn btn-secondary" id="pauseBtn">вЏё РџР°СѓР·Р°</button>
-                    <button class="btn btn-secondary" id="backBtn">вЏ® РќР°Р·Р°Рґ</button>
-                    <button class="btn btn-secondary" id="forwardBtn">вЏ­ Р’РїРµСЂС‘Рґ</button>
-                    <button class="btn btn-secondary" id="resetBtn">в†є РЎР±СЂРѕСЃ</button>
+                    <button class="btn btn-primary" id="startBtn">▶ Старт</button>
+                    <button class="btn btn-secondary" id="pauseBtn">⏸ Пауза</button>
+                    <button class="btn btn-secondary" id="backBtn">⏮ Назад</button>
+                    <button class="btn btn-secondary" id="forwardBtn">⏭ Вперёд</button>
+                    <button class="btn btn-secondary" id="resetBtn">↺ Сброс</button>
                 </div>
             </div>
 
             <div class="stats">
                 <div class="stat-card">
-                    <div class="stat-label">РџСЂРѕС€Р»Рѕ РІСЂРµРјРµРЅРё</div>
+                    <div class="stat-label">Прошло времени</div>
                     <div class="stat-value" id="statElapsedTime">00:00</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-label">РЈСЂРѕРІРµРЅСЊ</div>
+                    <div class="stat-label">Уровень</div>
                     <div class="stat-value"><span id="statLevel">1</span> / <span id="statTotalLevels">20</span></div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-label">РЁР°Р±Р»РѕРЅ</div>
-                    <div class="stat-value" id="currentTemplate">РЎС‚Р°РЅРґР°СЂС‚</div>
+                    <div class="stat-label">Шаблон</div>
+                    <div class="stat-value" id="currentTemplate">Стандарт</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-label">РЎС‚Р°С‚СѓСЃ</div>
-                    <div class="stat-value" id="timerStatus">Р“РѕС‚РѕРІ</div>
+                    <div class="stat-label">Статус</div>
+                    <div class="stat-value" id="timerStatus">Готов</div>
                 </div>
             </div>
         </div>
@@ -1218,207 +1218,207 @@
         <div class="container">
             <div class="admin-panel">
                 <div class="admin-header">
-                    <h2>вљ™пёЏ РџР°РЅРµР»СЊ СЂРµРґР°РєС‚РѕСЂР°</h2>
-                    <button class="btn btn-secondary nav-btn" data-page="timerPage">в†ђ РќР°Р·Р°Рґ Рє С‚Р°Р№РјРµСЂСѓ</button>
+                    <h2>⚙️ Панель редактора</h2>
+                    <button class="btn btn-secondary nav-btn" data-page="timerPage">← Назад к таймеру</button>
                 </div>
                 <div class="admin-tabs">
-                    <button class="admin-tab active" data-tab="templates">РЁР°Р±Р»РѕРЅС‹</button>
-                    <button class="admin-tab" data-tab="levels">Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ СѓСЂРѕРІРЅРё</button>
-                    <button class="admin-tab" data-tab="sound">Р—РІСѓРє СЃРёРіРЅР°Р»Р°</button>
-                    <button class="admin-tab" data-tab="points">РќР°СЃС‚СЂРѕР№РєР° РѕС‡РєРѕРІ</button>
-                    <button class="admin-tab" data-tab="settings">РќР°СЃС‚СЂРѕР№РєРё</button>
+                    <button class="admin-tab active" data-tab="templates">Шаблоны</button>
+                    <button class="admin-tab" data-tab="levels">Редактировать уровни</button>
+                    <button class="admin-tab" data-tab="sound">Звук сигнала</button>
+                    <button class="admin-tab" data-tab="points">Настройка очков</button>
+                    <button class="admin-tab" data-tab="settings">Настройки</button>
                 </div>
 
                 <div class="tab-content active" id="templatesTab">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
-                        <h3>рџ“Ѓ Р¤Р°Р№Р»С‹:</h3>
+                        <h3>📁 Файлы:</h3>
                         <div>
-                            <button class="btn btn-secondary" id="exportBtn">рџ“Ґ Р­РєСЃРїРѕСЂС‚ С€Р°Р±Р»РѕРЅР°</button>
-                            <button class="btn btn-secondary" id="importBtn">рџ“‚ РРјРїРѕСЂС‚ РёР· С„Р°Р№Р»Р°</button>
-                            <button class="btn btn-success" id="newTemplateBtn">+ РќРѕРІС‹Р№ С€Р°Р±Р»РѕРЅ</button>
+                            <button class="btn btn-secondary" id="exportBtn">📥 Экспорт шаблона</button>
+                            <button class="btn btn-secondary" id="importBtn">📂 Импорт из файла</button>
+                            <button class="btn btn-success" id="newTemplateBtn">+ Новый шаблон</button>
                         </div>
                     </div>
                     <div id="templatesList"></div>
                 </div>
 
                 <div class="tab-content" id="levelsTab">
-                    <h3>Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ: <span id="editingTemplateName">РЎС‚Р°РЅРґР°СЂС‚</span></h3>
+                    <h3>Редактирование: <span id="editingTemplateName">Стандарт</span></h3>
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Р”Р»РёС‚РµР»СЊРЅРѕСЃС‚СЊ СѓСЂРѕРІРЅСЏ (РјРёРЅСѓС‚С‹)</label>
-                            <input type="number" id="levelDuration" value="12" min="1">
+                            <label>Длительность уровня (минуты)</label>
+                            <input type="number" id="levelDuration" value="15" min="1">
                         </div>
                         <div class="form-group">
-                            <label>Р”Р»РёС‚РµР»СЊРЅРѕСЃС‚СЊ РѕР±С‹С‡РЅРѕРіРѕ РїРµСЂРµСЂС‹РІР° (РјРёРЅСѓС‚С‹, 0 = Р±РµР· РїРµСЂРµСЂС‹РІР°)</label>
+                            <label>Длительность обычного перерыва (минуты, 0 = без перерыва)</label>
                             <input type="number" id="breakDuration" value="5" min="0">
                         </div>
                         <div class="form-group">
-                            <label>РћР±С‹С‡РЅС‹Р№ РїРµСЂРµСЂС‹РІ РїРѕСЃР»Рµ РєР°Р¶РґРѕРіРѕ N СѓСЂРѕРІРЅСЏ</label>
-                            <input type="number" id="breakEveryNLevels" value="3" min="1">
+                            <label>Обычный перерыв после каждого N уровня</label>
+                            <input type="number" id="breakEveryNLevels" value="4" min="1">
                         </div>
                     </div>
 
                     <div class="form-group" style="margin-top:20px;">
-                        <label>рџ•ђ Р‘РѕР»СЊС€РѕР№ РїРµСЂРµСЂС‹РІ</label>
-                        <p style="color:var(--text-muted); font-size:13px; margin:5px 0;">РЎРїРµС†РёР°Р»СЊРЅС‹Р№ РґР»РёРЅРЅС‹Р№ РїРµСЂРµСЂС‹РІ, РєРѕС‚РѕСЂС‹Р№ РїСЂРѕРёСЃС…РѕРґРёС‚ РѕРґРёРЅ СЂР°Р· РїРѕСЃР»Рµ СѓРєР°Р·Р°РЅРЅРѕРіРѕ СѓСЂРѕРІРЅСЏ.</p>
+                        <label>🕐 Большой перерыв</label>
+                        <p style="color:var(--text-muted); font-size:13px; margin:5px 0;">Специальный длинный перерыв, который происходит один раз после указанного уровня.</p>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Р‘РѕР»СЊС€РѕР№ РїРµСЂРµСЂС‹РІ РїРѕСЃР»Рµ СѓСЂРѕРІРЅСЏ в„– (0 = РѕС‚РєР»СЋС‡С‘РЅ)</label>
-                            <input type="number" id="bigBreakAfterLevel" value="0" min="0">
+                            <label>Большой перерыв после уровня № (0 = отключён)</label>
+                            <input type="number" id="bigBreakAfterLevel" value="10" min="0">
                         </div>
                         <div class="form-group">
-                            <label>Р”Р»РёС‚РµР»СЊРЅРѕСЃС‚СЊ Р±РѕР»СЊС€РѕРіРѕ РїРµСЂРµСЂС‹РІР° (РјРёРЅСѓС‚С‹)</label>
-                            <input type="number" id="bigBreakDuration" value="15" min="1">
+                            <label>Длительность большого перерыва (минуты)</label>
+                            <input type="number" id="bigBreakDuration" value="20" min="1">
                         </div>
                     </div>
 
-                    <h3 style="margin:20px 0 10px 0; color: var(--primary-color);">РЎС‚СЂСѓРєС‚СѓСЂР° Р±Р»Р°Р№РЅРґРѕРІ</h3>
+                    <h3 style="margin:20px 0 10px 0; color: var(--primary-color);">Структура блайндов</h3>
                     <div class="levels-table-container">
                         <table class="levels-table">
                             <thead>
                                 <tr>
-                                    <th>РЈР РћР’Р•РќР¬</th>
+                                    <th>УРОВЕНЬ</th>
                                     <th>SB</th>
                                     <th>BB</th>
                                     <th>ANTE</th>
-                                    <th>Р”Р•Р™РЎРўР’РРЇ</th>
+                                    <th>ДЕЙСТВИЯ</th>
                                 </tr>
                             </thead>
                             <tbody id="levelsTableBody"></tbody>
                         </table>
                     </div>
-                    <button class="btn btn-success" id="addLevelBtn">+ Р”РѕР±Р°РІРёС‚СЊ СѓСЂРѕРІРµРЅСЊ</button>
-                    <button class="btn btn-primary" id="saveLevelsBtn" style="margin-left:10px;">рџ’ѕ РЎРѕС…СЂР°РЅРёС‚СЊ</button>
+                    <button class="btn btn-success" id="addLevelBtn">+ Добавить уровень</button>
+                    <button class="btn btn-primary" id="saveLevelsBtn" style="margin-left:10px;">💾 Сохранить</button>
                 </div>
 
                 <div class="tab-content" id="soundTab">
-                    <h3>рџ”Љ РќР°СЃС‚СЂРѕР№РєР° Р·РІСѓРєРѕРІС‹С… СЃРёРіРЅР°Р»РѕРІ</h3>
+                    <h3>🔊 Настройка звуковых сигналов</h3>
                     <p style="color:var(--text-muted); margin:10px 0 20px 0;">
-                        РџРѕ СѓРјРѕР»С‡Р°РЅРёСЋ РёСЃРїРѕР»СЊР·СѓСЋС‚СЃСЏ С„Р°Р№Р»С‹ РёР· РїР°РїРєРё <code style="color:var(--primary-color);">sound/</code>. 
-                        Р’С‹ РјРѕР¶РµС‚Рµ Р·Р°РіСЂСѓР·РёС‚СЊ СЃРІРѕРё С„Р°Р№Р»С‹ РґР»СЏ Р·Р°РјРµРЅС‹.
+                        По умолчанию используются файлы из папки <code style="color:var(--primary-color);">sound/</code>. 
+                        Вы можете загрузить свои файлы для замены.
                     </p>
 
                     <div class="sound-section">
-                        <h3>рџ”” Р—РІСѓРє РѕРєРѕРЅС‡Р°РЅРёСЏ СѓСЂРѕРІРЅСЏ (Р±Р»Р°Р№РЅРґС‹)</h3>
-                        <p>Р¤Р°Р№Р» РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ: <code>sound/blind.mp3</code></p>
+                        <h3>🔔 Звук окончания уровня (блайнды)</h3>
+                        <p>Файл по умолчанию: <code>sound/blind.mp3</code></p>
                         <div class="default-sound-info">
-                            <span style="color:var(--text-muted);">рџ“Ѓ</span>
+                            <span style="color:var(--text-muted);">📁</span>
                             <span class="sound-path">sound/blind.mp3</span>
-                            <button class="btn btn-secondary btn-small" id="playDefaultBlindSound">рџ”Љ РџСЂРѕСЃР»СѓС€Р°С‚СЊ</button>
+                            <button class="btn btn-secondary btn-small" id="playDefaultBlindSound">🔊 Прослушать</button>
                         </div>
                         <div class="custom-sound-section">
-                            <label>РР»Рё Р·Р°РіСЂСѓР·РёС‚Рµ СЃРІРѕР№ С„Р°Р№Р» (Р·Р°РјРµРЅРёС‚ С„Р°Р№Р» РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ):</label>
+                            <label>Или загрузите свой файл (заменит файл по умолчанию):</label>
                             <div class="file-upload" style="margin-top:10px;">
                                 <input type="file" id="customLevelSound" accept="audio/*">
-                                <span id="customLevelSoundName">Р¤Р°Р№Р» РЅРµ РІС‹Р±СЂР°РЅ</span>
+                                <span id="customLevelSoundName">Файл не выбран</span>
                             </div>
                             <div class="audio-preview">
-                                <button class="btn btn-secondary btn-small" id="playCustomLevelSound">в–¶ РџСЂРѕСЃР»СѓС€Р°С‚СЊ СЃРІРѕР№</button>
-                                <button class="btn btn-warning btn-small" id="removeCustomLevelSound">вњ• РЈР±СЂР°С‚СЊ СЃРІРѕР№ С„Р°Р№Р»</button>
+                                <button class="btn btn-secondary btn-small" id="playCustomLevelSound">▶ Прослушать свой</button>
+                                <button class="btn btn-warning btn-small" id="removeCustomLevelSound">✕ Убрать свой файл</button>
                             </div>
                         </div>
                     </div>
 
                     <div class="sound-section">
-                        <h3>рџ”” Р—РІСѓРє РѕРєРѕРЅС‡Р°РЅРёСЏ РѕР±С‹С‡РЅРѕРіРѕ РїРµСЂРµСЂС‹РІР°</h3>
-                        <p>Р¤Р°Р№Р» РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ: <code>sound/break.mp3</code></p>
+                        <h3>🔔 Звук окончания обычного перерыва</h3>
+                        <p>Файл по умолчанию: <code>sound/break.mp3</code></p>
                         <div class="default-sound-info">
-                            <span style="color:var(--text-muted);">рџ“Ѓ</span>
+                            <span style="color:var(--text-muted);">📁</span>
                             <span class="sound-path">sound/break.mp3</span>
-                            <button class="btn btn-secondary btn-small" id="playDefaultBreakSound">рџ”Љ РџСЂРѕСЃР»СѓС€Р°С‚СЊ</button>
+                            <button class="btn btn-secondary btn-small" id="playDefaultBreakSound">🔊 Прослушать</button>
                         </div>
                         <div class="custom-sound-section">
-                            <label>РР»Рё Р·Р°РіСЂСѓР·РёС‚Рµ СЃРІРѕР№ С„Р°Р№Р» (Р·Р°РјРµРЅРёС‚ С„Р°Р№Р» РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ):</label>
+                            <label>Или загрузите свой файл (заменит файл по умолчанию):</label>
                             <div class="file-upload" style="margin-top:10px;">
                                 <input type="file" id="customBreakSound" accept="audio/*">
-                                <span id="customBreakSoundName">Р¤Р°Р№Р» РЅРµ РІС‹Р±СЂР°РЅ</span>
+                                <span id="customBreakSoundName">Файл не выбран</span>
                             </div>
                             <div class="audio-preview">
-                                <button class="btn btn-secondary btn-small" id="playCustomBreakSound">в–¶ РџСЂРѕСЃР»СѓС€Р°С‚СЊ СЃРІРѕР№</button>
-                                <button class="btn btn-warning btn-small" id="removeCustomBreakSound">вњ• РЈР±СЂР°С‚СЊ СЃРІРѕР№ С„Р°Р№Р»</button>
+                                <button class="btn btn-secondary btn-small" id="playCustomBreakSound">▶ Прослушать свой</button>
+                                <button class="btn btn-warning btn-small" id="removeCustomBreakSound">✕ Убрать свой файл</button>
                             </div>
                         </div>
                     </div>
 
                     <div class="sound-section">
-                        <h3>рџ”” Р—РІСѓРє РѕРєРѕРЅС‡Р°РЅРёСЏ Р±РѕР»СЊС€РѕРіРѕ РїРµСЂРµСЂС‹РІР°</h3>
-                        <p>Р¤Р°Р№Р» РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ: <code>sound/bigbreak.mp3</code></p>
+                        <h3>🔔 Звук окончания большого перерыва</h3>
+                        <p>Файл по умолчанию: <code>sound/bigbreak.mp3</code></p>
                         <div class="default-sound-info">
-                            <span style="color:var(--text-muted);">рџ“Ѓ</span>
+                            <span style="color:var(--text-muted);">📁</span>
                             <span class="sound-path">sound/bigbreak.mp3</span>
-                            <button class="btn btn-secondary btn-small" id="playDefaultBigBreakSound">рџ”Љ РџСЂРѕСЃР»СѓС€Р°С‚СЊ</button>
+                            <button class="btn btn-secondary btn-small" id="playDefaultBigBreakSound">🔊 Прослушать</button>
                         </div>
                         <div class="custom-sound-section">
-                            <label>РР»Рё Р·Р°РіСЂСѓР·РёС‚Рµ СЃРІРѕР№ С„Р°Р№Р» (Р·Р°РјРµРЅРёС‚ С„Р°Р№Р» РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ):</label>
+                            <label>Или загрузите свой файл (заменит файл по умолчанию):</label>
                             <div class="file-upload" style="margin-top:10px;">
                                 <input type="file" id="customBigBreakSound" accept="audio/*">
-                                <span id="customBigBreakSoundName">Р¤Р°Р№Р» РЅРµ РІС‹Р±СЂР°РЅ</span>
+                                <span id="customBigBreakSoundName">Файл не выбран</span>
                             </div>
                             <div class="audio-preview">
-                                <button class="btn btn-secondary btn-small" id="playCustomBigBreakSound">в–¶ РџСЂРѕСЃР»СѓС€Р°С‚СЊ СЃРІРѕР№</button>
-                                <button class="btn btn-warning btn-small" id="removeCustomBigBreakSound">вњ• РЈР±СЂР°С‚СЊ СЃРІРѕР№ С„Р°Р№Р»</button>
+                                <button class="btn btn-secondary btn-small" id="playCustomBigBreakSound">▶ Прослушать свой</button>
+                                <button class="btn btn-warning btn-small" id="removeCustomBigBreakSound">✕ Убрать свой файл</button>
                             </div>
                         </div>
                     </div>
 
                     <div class="form-group" style="margin-top:20px;">
-                        <label>РћР±С‰Р°СЏ РіСЂРѕРјРєРѕСЃС‚СЊ: <span id="volumeValue">70</span>%</label>
+                        <label>Общая громкость: <span id="volumeValue">90</span>%</label>
                         <input type="range" id="volumeSlider" min="0" max="100" value="70">
                     </div>
 
-                    <button class="btn btn-primary" id="saveSoundBtn">рџ’ѕ РЎРѕС…СЂР°РЅРёС‚СЊ РЅР°СЃС‚СЂРѕР№РєРё Р·РІСѓРєР°</button>
+                    <button class="btn btn-primary" id="saveSoundBtn">💾 Сохранить настройки звука</button>
                 </div>
 
                 <div class="tab-content" id="pointsTab">
-                    <h3>рџЏ† РќР°СЃС‚СЂРѕР№РєР° СЂР°СЃРїСЂРµРґРµР»РµРЅРёСЏ РѕС‡РєРѕРІ</h3>
-                    <p style="color:var(--text-muted); margin:10px 0;">РќР°СЃС‚СЂРѕР№С‚Рµ РєРѕР»РёС‡РµСЃС‚РІРѕ РїСЂРёР·РѕРІС‹С… РјРµСЃС‚ Рё РїСЂРѕС†РµРЅС‚ РѕС‡РєРѕРІ Р·Р° РєР°Р¶РґРѕРµ РјРµСЃС‚Рѕ</p>
+                    <h3>🏆 Настройка распределения очков</h3>
+                    <p style="color:var(--text-muted); margin:10px 0;">Настройте количество призовых мест и процент очков за каждое место</p>
                     <div class="form-group">
-                        <label>РћР±С‰РµРµ РєРѕР»РёС‡РµСЃС‚РІРѕ РѕС‡РєРѕРІ С‚СѓСЂРЅРёСЂР°</label>
-                        <input type="number" id="totalPoints" value="1000" min="100">
+                        <label>Общее количество очков турнира</label>
+                        <input type="number" id="totalPoints" value="500" min="100">
                     </div>
                     <div id="pointsConfigContainer">
                         <table class="points-config-table">
                             <thead>
                                 <tr>
-                                    <th>РњРµСЃС‚Рѕ</th>
-                                    <th>РџСЂРѕС†РµРЅС‚ РѕС‡РєРѕРІ (%)</th>
+                                    <th>Место</th>
+                                    <th>Процент очков (%)</th>
                                 </tr>
                             </thead>
                             <tbody id="pointsConfigBody"></tbody>
                         </table>
                     </div>
                     <div class="form-group">
-                        <label>РљРѕР»РёС‡РµСЃС‚РІРѕ РїСЂРёР·РѕРІС‹С… РјРµСЃС‚</label>
+                        <label>Количество призовых мест</label>
                         <input type="number" id="prizePlacesCount" value="3" min="1" max="10" onchange="updatePointsConfig()">
                     </div>
-                    <button class="btn btn-primary" id="savePointsConfigBtn">рџ’ѕ РЎРѕС…СЂР°РЅРёС‚СЊ РєРѕРЅС„РёРіСѓСЂР°С†РёСЋ</button>
-                    <button class="btn btn-secondary" id="loadPresetBtn" style="margin-left:10px;">рџ“‹ Р—Р°РіСЂСѓР·РёС‚СЊ С€Р°Р±Р»РѕРЅ</button>
+                    <button class="btn btn-primary" id="savePointsConfigBtn">💾 Сохранить конфигурацию</button>
+                    <button class="btn btn-secondary" id="loadPresetBtn" style="margin-left:10px;">📋 Загрузить шаблон</button>
                 </div>
 
                 <div class="tab-content" id="settingsTab">
-                    <h3>рџЋЁ Р¦РІРµС‚РѕРІР°СЏ С‚РµРјР°</h3>
+                    <h3>🎨 Цветовая тема</h3>
                     <div class="form-group">
-                        <label>РћСЃРЅРѕРІРЅРѕР№ С†РІРµС‚ СЃР°Р№С‚Р° (Р»РѕРіРѕС‚РёРї, РєРЅРѕРїРєРё, Р±РѕСЂРґСЋСЂС‹, РїСЂРѕРіСЂРµСЃСЃ-Р±Р°СЂ, Р±Р»Р°Р№РЅРґС‹)</label>
+                        <label>Основной цвет сайта (логотип, кнопки, бордюры, прогресс-бар, блайнды)</label>
                         <div class="color-picker">
                             <input type="color" id="primaryColorPicker" value="#00bfff">
-                            <span>РЎРІРѕР№:</span>
+                            <span>Свой:</span>
                             <input type="text" id="primaryColorText" value="#00bfff" style="width:100px;">
                         </div>
                     </div>
-                    <h3 style="margin-top:30px;">РћР±С‰РёРµ РЅР°СЃС‚СЂРѕР№РєРё</h3>
+                    <h3 style="margin-top:30px;">Общие настройки</h3>
                     <div class="form-group">
-                        <label>РЎРјРµРЅРёС‚СЊ РїР°СЂРѕР»СЊ Р°РґРјРёРЅР°</label>
-                        <input type="password" id="newPassword" placeholder="РќРѕРІС‹Р№ РїР°СЂРѕР»СЊ">
+                        <label>Сменить пароль админа</label>
+                        <input type="password" id="newPassword" placeholder="Новый пароль">
                     </div>
                     <div class="form-group">
-                        <label>РџРѕРґС‚РІРµСЂРґРёС‚Рµ РїР°СЂРѕР»СЊ</label>
-                        <input type="password" id="confirmPassword" placeholder="РџРѕРІС‚РѕСЂРёС‚Рµ РїР°СЂРѕР»СЊ">
+                        <label>Подтвердите пароль</label>
+                        <input type="password" id="confirmPassword" placeholder="Повторите пароль">
                     </div>
-                    <button class="btn btn-primary" id="changePasswordBtn">РР·РјРµРЅРёС‚СЊ РїР°СЂРѕР»СЊ</button>
+                    <button class="btn btn-primary" id="changePasswordBtn">Изменить пароль</button>
                     <div class="danger-zone">
-                        <h3>РћРїР°СЃРЅР°СЏ Р·РѕРЅР°</h3>
-                        <button class="btn btn-danger" id="resetAllBtn">рџ—‘ РЎР±СЂРѕСЃРёС‚СЊ РІСЃРµ РґР°РЅРЅС‹Рµ</button>
+                        <h3>Опасная зона</h3>
+                        <button class="btn btn-danger" id="resetAllBtn">🗑 Сбросить все данные</button>
                     </div>
                 </div>
             </div>
@@ -1428,51 +1428,51 @@
     <div class="page" id="gridPage">
         <div class="grid-container" id="gridContainer">
             <div class="grid-header">
-                <h2>рџ“Љ РўСѓСЂРЅРёСЂРЅР°СЏ СЃРµС‚РєР°</h2>
+                <h2>📊 Турнирная сетка</h2>
                 <div class="grid-timer-display">
-                    <div class="grid-timer-level">РЈСЂРѕРІРµРЅСЊ <span id="gridCurrentLevel">1</span></div>
+                    <div class="grid-timer-level">Уровень <span id="gridCurrentLevel">1</span></div>
                     <div class="grid-timer-blinds"><span id="gridSmallBlind">100</span> / <span id="gridBigBlind">200</span></div>
                     <div class="grid-timer-time" id="gridTimerDisplay">12:00</div>
                 </div>
-                <button class="btn btn-secondary nav-btn" data-page="timerPage">в†ђ РќР°Р·Р°Рґ Рє С‚Р°Р№РјРµСЂСѓ</button>
+                <button class="btn btn-secondary nav-btn" data-page="timerPage">← Назад к таймеру</button>
             </div>
 
             <div class="player-registration" id="playerRegistrationSection">
-                <h3>рџ“ќ Р РµРіРёСЃС‚СЂР°С†РёСЏ СѓС‡Р°СЃС‚РЅРёРєРѕРІ</h3>
+                <h3>📝 Регистрация участников</h3>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>РРјСЏ СѓС‡Р°СЃС‚РЅРёРєР°</label>
-                        <input type="text" id="playerName" placeholder="Р’РІРµРґРёС‚Рµ РёРјСЏ">
+                        <label>Имя участника</label>
+                        <input type="text" id="playerName" placeholder="Введите имя">
                     </div>
                     <div class="form-group">
-                        <label>РљРѕР»РёС‡РµСЃС‚РІРѕ РѕС‡РєРѕРІ</label>
+                        <label>Количество очков</label>
                         <input type="number" id="playerChips" placeholder="500" value="500" min="1">
                     </div>
                     <div class="form-group" style="display:flex; align-items:flex-end;">
-                        <button class="btn btn-success" id="addPlayerBtn">+ Р”РѕР±Р°РІРёС‚СЊ</button>
+                        <button class="btn btn-success" id="addPlayerBtn">+ Добавить</button>
                     </div>
                 </div>
                 <div class="player-list" id="playerList"></div>
                 <div class="form-group" style="margin-top:20px;">
-                    <label>РњР°РєСЃРёРјР°Р»СЊРЅРѕРµ РєРѕР»РёС‡РµСЃС‚РІРѕ РёРіСЂРѕРєРѕРІ Р·Р° СЃС‚РѕР»РѕРј</label>
+                    <label>Максимальное количество игроков за столом</label>
                     <input type="number" id="maxPlayersPerTable" value="6" min="2" max="12">
                 </div>
-                <button class="btn btn-primary" id="createGridBtn" style="margin-top:15px;">рџЋІ РЎРѕР·РґР°С‚СЊ СЃРµС‚РєСѓ</button>
+                <button class="btn btn-primary" id="createGridBtn" style="margin-top:15px;">🎲 Создать сетку</button>
             </div>
 
             <div class="player-registration" id="addPlayerAfterGridSection" style="display:none;">
-                <h3>вћ• Р”РѕР±Р°РІРёС‚СЊ СѓС‡Р°СЃС‚РЅРёРєР° РІ СЃРµС‚РєСѓ</h3>
+                <h3>➕ Добавить участника в сетку</h3>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>РРјСЏ СѓС‡Р°СЃС‚РЅРёРєР°</label>
-                        <input type="text" id="newPlayerName" placeholder="Р’РІРµРґРёС‚Рµ РёРјСЏ">
+                        <label>Имя участника</label>
+                        <input type="text" id="newPlayerName" placeholder="Введите имя">
                     </div>
                     <div class="form-group">
-                        <label>РљРѕР»РёС‡РµСЃС‚РІРѕ РѕС‡РєРѕРІ</label>
+                        <label>Количество очков</label>
                         <input type="number" id="newPlayerChips" placeholder="500" value="500" min="1">
                     </div>
                     <div class="form-group" style="display:flex; align-items:flex-end;">
-                        <button class="btn btn-success" id="addPlayerToGridBtn">+ Р”РѕР±Р°РІРёС‚СЊ РІ СЃРµС‚РєСѓ</button>
+                        <button class="btn btn-success" id="addPlayerToGridBtn">+ Добавить в сетку</button>
                     </div>
                 </div>
             </div>
@@ -1480,10 +1480,10 @@
             <div class="tables-container" id="tablesContainer"></div>
 
             <div class="final-table-section" id="finalTableSection" style="display:none;">
-                <h3>рџЏ† Р—Р°РІРµСЂС€РµРЅРёРµ С‚СѓСЂРЅРёСЂР°</h3>
-                <p>РЎС„РѕСЂРјРёСЂРѕРІР°С‚СЊ С„РёРЅР°Р»СЊРЅС‹Р№ СЃС‚РѕР» РёР»Рё Р·Р°РІРµСЂС€РёС‚СЊ С‚СѓСЂРЅРёСЂ</p>
-                <button class="final-table-btn" id="createFinalTableBtn">рџЋІ Р¤РёРЅР°Р»СЊРЅС‹Р№ СЃС‚РѕР»</button>
-                <button class="end-tournament-btn" id="endTournamentBtn">рџЏЃ Р—Р°РІРµСЂС€РёС‚СЊ С‚СѓСЂРЅРёСЂ</button>
+                <h3>🏆 Завершение турнира</h3>
+                <p>Сформировать финальный стол или завершить турнир</p>
+                <button class="final-table-btn" id="createFinalTableBtn">🎲 Финальный стол</button>
+                <button class="end-tournament-btn" id="endTournamentBtn">🏁 Завершить турнир</button>
             </div>
         </div>
     </div>
@@ -1491,85 +1491,85 @@
     <div class="page" id="ratingPage">
         <div class="rating-container" id="ratingContainer">
             <div class="rating-header">
-                <h2>рџЏ† РС‚РѕРіРѕРІС‹Р№ СЂРµР№С‚РёРЅРі С‚СѓСЂРЅРёСЂР°</h2>
-                <p style="color:var(--text-muted); margin-top:10px;">Р Р°СЃРїСЂРµРґРµР»РµРЅРёРµ РјРµСЃС‚ Рё РѕС‡РєРѕРІ РїРѕ РёС‚РѕРіР°Рј С‚СѓСЂРЅРёСЂР°</p>
+                <h2>🏆 Итоговый рейтинг турнира</h2>
+                <p style="color:var(--text-muted); margin-top:10px;">Распределение мест и очков по итогам турнира</p>
             </div>
             <div class="rating-list" id="ratingList"></div>
             <div class="rating-actions">
-                <button class="btn btn-success" id="saveRatingJpgBtn">рџ“ё РЎРѕС…СЂР°РЅРёС‚СЊ РІ JPG</button>
-                <button class="btn btn-secondary nav-btn" data-page="timerPage">в†ђ РќР°Р·Р°Рґ Рє С‚Р°Р№РјРµСЂСѓ</button>
+                <button class="btn btn-success" id="saveRatingJpgBtn">📸 Сохранить в JPG</button>
+                <button class="btn btn-secondary nav-btn" data-page="timerPage">← Назад к таймеру</button>
             </div>
         </div>
     </div>
 
     <div class="screenshot-container" id="screenshotContainer">
         <div class="rating-header">
-            <h2>рџЏ† РС‚РѕРіРѕРІС‹Р№ СЂРµР№С‚РёРЅРі С‚СѓСЂРЅРёСЂР°</h2>
-            <p>Р Р°СЃРїСЂРµРґРµР»РµРЅРёРµ РјРµСЃС‚ Рё РѕС‡РєРѕРІ РїРѕ РёС‚РѕРіР°Рј С‚СѓСЂРЅРёСЂР°</p>
+            <h2>🏆 Итоговый рейтинг турнира</h2>
+            <p>Распределение мест и очков по итогам турнира</p>
         </div>
         <div class="rating-list" id="screenshotRatingList"></div>
         <div class="screenshot-footer">
-            <p>Poker Timer вЂў <span id="screenshotDate"></span></p>
+            <p>Poker Timer • <span id="screenshotDate"></span></p>
         </div>
     </div>
 
     <div class="modal" id="loginModal">
         <div class="modal-content login-modal">
-            <div class="modal-header">рџ”ђ Р’С…РѕРґ РґР»СЏ Р°РґРјРёРЅР°</div>
+            <div class="modal-header">🔐 Вход для админа</div>
             <div class="form-group">
-                <label>РџР°СЂРѕР»СЊ</label>
-                <input type="password" id="adminPassword" placeholder="Р’РІРµРґРёС‚Рµ РїР°СЂРѕР»СЊ">
-                <p style="color:var(--text-muted); font-size:12px; margin-top:5px;">РџР°СЂРѕР»СЊ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ: admin123</p>
+                <label>Пароль</label>
+                <input type="password" id="adminPassword" placeholder="Введите пароль">
+                <p style="color:var(--text-muted); font-size:12px; margin-top:5px;">Пароль по умолчанию: secret</p>
             </div>
             <div class="modal-actions">
-                <button class="btn btn-secondary" id="cancelLoginBtn">РћС‚РјРµРЅР°</button>
-                <button class="btn btn-primary" id="confirmLoginBtn">Р’РѕР№С‚Рё</button>
+                <button class="btn btn-secondary" id="cancelLoginBtn">Отмена</button>
+                <button class="btn btn-primary" id="confirmLoginBtn">Войти</button>
             </div>
         </div>
     </div>
 
     <div class="modal" id="playerActionModal">
         <div class="modal-content">
-            <div class="modal-header" id="playerActionTitle">Р”РµР№СЃС‚РІРёСЏ СЃ РёРіСЂРѕРєРѕРј</div>
+            <div class="modal-header" id="playerActionTitle">Действия с игроком</div>
             <div id="playerActionContent"></div>
             <div class="modal-actions">
-                <button class="btn btn-secondary" id="closePlayerActionBtn">Р—Р°РєСЂС‹С‚СЊ</button>
+                <button class="btn btn-secondary" id="closePlayerActionBtn">Закрыть</button>
             </div>
         </div>
     </div>
 
     <div class="modal" id="movePlayerModal">
         <div class="modal-content">
-            <div class="modal-header">РџРµСЂРµСЃР°РґРєР° СѓС‡Р°СЃС‚РЅРёРєР°</div>
+            <div class="modal-header">Пересадка участника</div>
             <div class="form-group">
-                <label>Р’С‹Р±РµСЂРёС‚Рµ СЃС‚РѕР»</label>
+                <label>Выберите стол</label>
                 <select id="moveToTable"></select>
             </div>
             <div class="form-group">
-                <label>Р’С‹Р±РµСЂРёС‚Рµ РјРµСЃС‚Рѕ</label>
+                <label>Выберите место</label>
                 <select id="moveToSeat"></select>
             </div>
             <div class="modal-actions">
-                <button class="btn btn-secondary" id="cancelMoveBtn">РћС‚РјРµРЅР°</button>
-                <button class="btn btn-primary" id="confirmMoveBtn">РџРµСЂРµСЃР°РґРёС‚СЊ</button>
+                <button class="btn btn-secondary" id="cancelMoveBtn">Отмена</button>
+                <button class="btn btn-primary" id="confirmMoveBtn">Пересадить</button>
             </div>
         </div>
     </div>
 
     <div class="modal" id="pointsPresetModal">
         <div class="modal-content">
-            <div class="modal-header">рџ“‹ Р—Р°РіСЂСѓР·РёС‚СЊ С€Р°Р±Р»РѕРЅ СЂР°СЃРїСЂРµРґРµР»РµРЅРёСЏ РѕС‡РєРѕРІ</div>
+            <div class="modal-header">📋 Загрузить шаблон распределения очков</div>
             <div class="form-group">
-                <label>Р’С‹Р±РµСЂРёС‚Рµ С€Р°Р±Р»РѕРЅ</label>
+                <label>Выберите шаблон</label>
                 <select id="pointsPresetSelect" onchange="loadPointsPreset()">
-                    <option value="">-- Р’С‹Р±РµСЂРёС‚Рµ С€Р°Р±Р»РѕРЅ --</option>
-                    <option value="small">Р”Рѕ 9 РёРіСЂРѕРєРѕРІ (3 РјРµСЃС‚Р°)</option>
-                    <option value="medium">12-18 РёРіСЂРѕРєРѕРІ (5 РјРµСЃС‚)</option>
-                    <option value="large">19-30 РёРіСЂРѕРєРѕРІ (6 РјРµСЃС‚)</option>
+                    <option value="">-- Выберите шаблон --</option>
+                    <option value="small">До 9 игроков (3 места)</option>
+                    <option value="medium">12-18 игроков (5 мест)</option>
+                    <option value="large">19-30 игроков (6 мест)</option>
                 </select>
             </div>
             <div class="modal-actions">
-                <button class="btn btn-secondary" onclick="document.getElementById('pointsPresetModal').classList.remove('active')">Р—Р°РєСЂС‹С‚СЊ</button>
+                <button class="btn btn-secondary" onclick="document.getElementById('pointsPresetModal').classList.remove('active')">Закрыть</button>
             </div>
         </div>
     </div>
@@ -1592,7 +1592,7 @@
                 targetEndTime: null
             },
             templates: {
-                'РЎС‚Р°РЅРґР°СЂС‚': {
+                'Стандарт': {
                     levelDuration: 12,
                     breakDuration: 5,
                     breakEveryNLevels: 3,
@@ -1600,14 +1600,32 @@
                     bigBreakDuration: 15,
                     levels: [
                         { level: 1, sb: 100, bb: 200, ante: 0 },
-                        { level: 2, sb: 200, bb: 400, ante: 0 },
-                        { level: 3, sb: 300, bb: 600, ante: 0 },
-                        { level: 4, sb: 400, bb: 800, ante: 25 },
-                        { level: 5, sb: 500, bb: 1000, ante: 50 }
+                        { level: 2, sb: 200, bb: 200, ante: 200 },
+                        { level: 3, sb: 200, bb: 400, ante: 400 },
+                        { level: 4, sb: 300, bb: 600, ante: 600 },
+                        { level: 5, sb: 400, bb: 800, ante: 800 },
+                        { level: 6, sb: 500, bb: 1000, ante: 1000 },
+                        { level: 7, sb: 600, bb: 1200, ante: 1200 },
+                        { level: 8, sb: 800, bb: 1600, ante: 1600 },
+                        { level: 9, sb: 1000, bb: 2000, ante: 2000 },
+                        { level: 10, sb: 1200, bb: 2500, ante: 2500 },
+                        { level: 11, sb: 1500, bb: 3000, ante: 3000 },
+                        { level: 12, sb: 2000, bb: 4000, ante: 4000 },
+                        { level: 13, sb: 2500, bb: 5000, ante: 5000 },
+                        { level: 14, sb: 3000, bb: 6000, ante: 6000 },
+                        { level: 15, sb: 4000, bb: 8000, ante: 8000 },
+                        { level: 16, sb: 5000, bb: 10000, ante: 10000 },
+                        { level: 17, sb: 6000, bb: 12000, ante: 12000 },
+                        { level: 18, sb: 8000, bb: 16000, ante: 16000 },
+                        { level: 19, sb: 10000, bb: 20000, ante: 20000 },
+                        { level: 20, sb: 12000, bb: 25000, ante: 25000 },
+                        { level: 21, sb: 15000, bb: 30000, ante: 30000 },
+                        { level: 22, sb: 20000, bb: 40000, ante: 40000 },
+                        { level: 23, sb: 25000, bb: 50000, ante: 50000 }
                     ]
                 }
             },
-            currentTemplate: 'РЎС‚Р°РЅРґР°СЂС‚',
+            currentTemplate: 'Стандарт',
             settings: {
                 adminPassword: 'admin123',
                 primaryColor: '#00bfff',
@@ -1636,19 +1654,19 @@
             }
         };
 
-        // BroadcastChannel РґР»СЏ СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё РјРµР¶РґСѓ РІРєР»Р°РґРєР°РјРё
+        // BroadcastChannel для синхронизации между вкладками
         let broadcastChannel = null;
         try {
             broadcastChannel = new BroadcastChannel('pokerTimer');
         } catch (e) {
-            console.log('BroadcastChannel РЅРµ РїРѕРґРґРµСЂР¶РёРІР°РµС‚СЃСЏ');
+            console.log('BroadcastChannel не поддерживается');
         }
 
         function broadcastUpdate(type, data) {
             if (broadcastChannel) {
                 broadcastChannel.postMessage({ type, data, timestamp: Date.now() });
             }
-            // РўР°РєР¶Рµ СЃРѕС…СЂР°РЅСЏРµРј РІ localStorage РґР»СЏ СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё
+            // Также сохраняем в localStorage для синхронизации
             localStorage.setItem('pokerTimerUpdate', JSON.stringify({ type, data, timestamp: Date.now() }));
         }
 
@@ -1678,7 +1696,7 @@
                     state.grid.tournamentEnded = gridData.tournamentEnded || false;
                     return true;
                 } catch (e) {
-                    console.error('РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё РґР°РЅРЅС‹С… СЃРµС‚РєРё:', e);
+                    console.error('Ошибка загрузки данных сетки:', e);
                     return false;
                 }
             }
@@ -1743,7 +1761,7 @@
                     
                     return true;
                 } catch (e) {
-                    console.error('РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё СЃРѕСЃС‚РѕСЏРЅРёСЏ С‚Р°Р№РјРµСЂР°:', e);
+                    console.error('Ошибка загрузки состояния таймера:', e);
                     return false;
                 }
             }
@@ -1792,15 +1810,15 @@
             const blindsDisplay = document.querySelector('.blinds-display');
             
             if (state.timer.tournamentEnded) {
-                levelDisplay.innerHTML = 'РўРЈР РќРР  Р—РђР’Р•Р РЁРЃРќ!';
+                levelDisplay.innerHTML = 'ТУРНИР ЗАВЕРШЁН!';
                 levelDisplay.className = 'level-display tournament-ended';
                 timerDisplay.textContent = '--:--';
                 if (blindsDisplay) blindsDisplay.style.display = 'none';
-                document.getElementById('nextLevelInfo').textContent = 'РќРѕРІС‹Р№ С‚СѓСЂРЅРёСЂ РЅР°С‡РЅС‘С‚СЃСЏ С‡РµСЂРµР· 30 СЃРµРєСѓРЅРґ';
+                document.getElementById('nextLevelInfo').textContent = 'Новый турнир начнётся через 30 секунд';
                 document.getElementById('progressFill').style.width = '100%';
                 document.getElementById('elapsedTime').textContent = '00:00';
                 document.getElementById('totalTime').textContent = '00:00';
-                document.getElementById('timerStatus').textContent = 'Р—Р°РІРµСЂС€С‘РЅ';
+                document.getElementById('timerStatus').textContent = 'Завершён';
                 return;
             }
             
@@ -1819,10 +1837,10 @@
             document.getElementById('progressFill').style.width = progress + '%';
             
             if (state.timer.isBreak) {
-                levelDisplay.innerHTML = 'РџР•Р Р•Р Р«Р’';
+                levelDisplay.innerHTML = 'ПЕРЕРЫВ';
                 levelDisplay.className = 'level-display break-mode';
             } else {
-                levelDisplay.innerHTML = 'РЈР РћР’Р•РќР¬ <span id="currentLevel">' + state.timer.currentLevel + '</span>';
+                levelDisplay.innerHTML = 'УРОВЕНЬ <span id="currentLevel">' + state.timer.currentLevel + '</span>';
                 levelDisplay.className = 'level-display';
             }
             
@@ -1838,13 +1856,13 @@
                 const nextLevelInfo = document.getElementById('nextLevelInfo');
                 
                 if (template.breakDuration > 0 && nextLevel % template.breakEveryNLevels === 0) {
-                    nextLevelInfo.textContent = `РџРµСЂРµСЂС‹РІ ${template.breakDuration} РјРёРЅСѓС‚`;
+                    nextLevelInfo.textContent = `Перерыв ${template.breakDuration} минут`;
                 } else if (template.bigBreakAfterLevel > 0 && nextLevel === template.bigBreakAfterLevel + 1) {
-                    nextLevelInfo.textContent = `Р‘РѕР»СЊС€РѕР№ РїРµСЂРµСЂС‹РІ ${template.bigBreakDuration} РјРёРЅСѓС‚`;
+                    nextLevelInfo.textContent = `Большой перерыв ${template.bigBreakDuration} минут`;
                 } else if (nextLevelData) {
                     nextLevelInfo.textContent = `${nextLevelData.sb} / ${nextLevelData.bb}`;
                 } else {
-                    nextLevelInfo.textContent = 'Р—Р°РІРµСЂС€РµРЅРёРµ С‚СѓСЂРЅРёСЂР°';
+                    nextLevelInfo.textContent = 'Завершение турнира';
                 }
             }
             
@@ -1873,7 +1891,7 @@
             state.timer.startTime = null;
             state.timer.targetEndTime = null;
             
-            document.getElementById('timerStatus').textContent = 'Р“РѕС‚РѕРІ';
+            document.getElementById('timerStatus').textContent = 'Готов';
             document.getElementById('currentTemplate').textContent = state.currentTemplate;
             
             updateTimerDisplay();
@@ -1903,7 +1921,7 @@
             state.timer.isPaused = false;
             state.timer.startTime = Date.now();
             state.timer.targetEndTime = Date.now() + state.timer.timeRemaining * 1000;
-            document.getElementById('timerStatus').textContent = 'РРґС‘С‚ РёРіСЂР°';
+            document.getElementById('timerStatus').textContent = 'Идёт игра';
             
             state.timer.interval = setInterval(() => {
                 if (state.timer.timeRemaining > 0) {
@@ -1926,7 +1944,7 @@
             state.timer.isPaused = true;
             clearInterval(state.timer.interval);
             state.timer.targetEndTime = null;
-            document.getElementById('timerStatus').textContent = 'РџР°СѓР·Р°';
+            document.getElementById('timerStatus').textContent = 'Пауза';
             saveTimerState();
         }
 
@@ -1943,7 +1961,7 @@
             state.timer.startTime = null;
             state.timer.targetEndTime = null;
             clearInterval(state.timer.interval);
-            document.getElementById('timerStatus').textContent = 'Р“РѕС‚РѕРІ';
+            document.getElementById('timerStatus').textContent = 'Готов';
             updateTimerDisplay();
             saveTimerState();
         }
@@ -1970,13 +1988,13 @@
                 state.timer.totalLevelTime = template.bigBreakDuration * 60;
                 state.timer.timeRemaining = state.timer.totalLevelTime;
                 state.timer.isBreak = true;
-                document.getElementById('nextLevelInfo').textContent = `Р‘РѕР»СЊС€РѕР№ РїРµСЂРµСЂС‹РІ: ${template.bigBreakDuration} РјРёРЅСѓС‚`;
+                document.getElementById('nextLevelInfo').textContent = `Большой перерыв: ${template.bigBreakDuration} минут`;
                 playSound('bigBreakEnd');
             } else if (template.breakDuration > 0 && state.timer.currentLevel % template.breakEveryNLevels === 0) {
                 state.timer.totalLevelTime = template.breakDuration * 60;
                 state.timer.timeRemaining = state.timer.totalLevelTime;
                 state.timer.isBreak = true;
-                document.getElementById('nextLevelInfo').textContent = `РџРµСЂРµСЂС‹РІ ${template.breakDuration} РјРёРЅСѓС‚`;
+                document.getElementById('nextLevelInfo').textContent = `Перерыв ${template.breakDuration} минут`;
                 playSound('breakEnd');
             } else {
                 state.timer.totalLevelTime = template.levelDuration * 60;
@@ -2002,11 +2020,11 @@
                 state.timer.isPaused = false;
                 state.timer.targetEndTime = null;
                 clearInterval(state.timer.interval);
-                document.getElementById('timerStatus').textContent = 'Р“РѕС‚РѕРІ';
+                document.getElementById('timerStatus').textContent = 'Готов';
                 updateTimerDisplay();
                 saveTimerState();
             } else {
-                alert('Р­С‚Рѕ РїРµСЂРІС‹Р№ СѓСЂРѕРІРµРЅСЊ, РЅР°Р·Р°Рґ РїРµСЂРµРјРѕС‚Р°С‚СЊ РЅРµР»СЊР·СЏ');
+                alert('Это первый уровень, назад перемотать нельзя');
             }
         }
 
@@ -2017,8 +2035,8 @@
             overlay.className = 'tournament-ended-overlay';
             overlay.id = 'tournamentEndedOverlay';
             overlay.innerHTML = `
-                <h1>рџЏ† РўРЈР РќРР  Р—РђР’Р•Р РЁРЃРќ!</h1>
-                <p>РќРѕРІС‹Р№ С‚СѓСЂРЅРёСЂ РЅР°С‡РЅС‘С‚СЃСЏ С‡РµСЂРµР·</p>
+                <h1>🏆 ТУРНИР ЗАВЕРШЁН!</h1>
+                <p>Новый турнир начнётся через</p>
                 <div class="countdown" id="tournamentCountdown">${countdown}</div>
             `;
             document.body.appendChild(overlay);
@@ -2068,7 +2086,7 @@
                 const audio = new Audio(audioSrc);
                 audio.volume = volume;
                 audio.play().catch(err => {
-                    console.warn('РќРµ СѓРґР°Р»РѕСЃСЊ РІРѕСЃРїСЂРѕРёР·РІРµСЃС‚Рё Р·РІСѓРє:', err);
+                    console.warn('Не удалось воспроизвести звук:', err);
                 });
             }
         }
@@ -2078,7 +2096,7 @@
             const audio = new Audio(soundPath);
             audio.volume = volume;
             audio.play().catch(err => {
-                alert('РќРµ СѓРґР°Р»РѕСЃСЊ РІРѕСЃРїСЂРѕРёР·РІРµСЃС‚Рё С„Р°Р№Р»: ' + soundPath + '\nРЈР±РµРґРёС‚РµСЃСЊ, С‡С‚Рѕ С„Р°Р№Р» СЃСѓС‰РµСЃС‚РІСѓРµС‚ РІ РїР°РїРєРµ sound/');
+                alert('Не удалось воспроизвести файл: ' + soundPath + '\nУбедитесь, что файл существует в папке sound/');
             });
         }
 
@@ -2087,7 +2105,7 @@
             const chips = parseInt(document.getElementById('playerChips').value);
             
             if (!name) {
-                alert('Р’РІРµРґРёС‚Рµ РёРјСЏ СѓС‡Р°СЃС‚РЅРёРєР°');
+                alert('Введите имя участника');
                 return;
             }
             
@@ -2115,9 +2133,9 @@
                 item.innerHTML = `
                     <div class="player-item-info">
                         <span class="player-item-name">${index + 1}. ${player.name}</span>
-                        <span class="player-item-chips">${player.chips} РѕС‡РєРѕРІ</span>
+                        <span class="player-item-chips">${player.chips} очков</span>
                     </div>
-                    <button class="btn btn-warning btn-small" onclick="removePlayer(${player.id})">вњ•</button>
+                    <button class="btn btn-warning btn-small" onclick="removePlayer(${player.id})">✕</button>
                 `;
                 list.appendChild(item);
             });
@@ -2131,7 +2149,7 @@
 
         function createGrid() {
             if (state.grid.players.length === 0) {
-                alert('Р”РѕР±Р°РІСЊС‚Рµ СѓС‡Р°СЃС‚РЅРёРєРѕРІ');
+                alert('Добавьте участников');
                 return;
             }
             
@@ -2173,7 +2191,7 @@
             const chips = parseInt(document.getElementById('newPlayerChips').value);
             
             if (!name) {
-                alert('Р’РІРµРґРёС‚Рµ РёРјСЏ СѓС‡Р°СЃС‚РЅРёРєР°');
+                alert('Введите имя участника');
                 return;
             }
             
@@ -2226,7 +2244,7 @@
                 
                 const header = document.createElement('div');
                 header.className = 'table-header';
-                header.textContent = `РЎС‚РѕР» ${table.id} - ${table.players.length} СѓС‡Р°СЃС‚РЅРёРєРѕРІ`;
+                header.textContent = `Стол ${table.id} - ${table.players.length} участников`;
                 tableDiv.appendChild(header);
                 
                 const ovalContainer = document.createElement('div');
@@ -2235,11 +2253,11 @@
                 const oval = document.createElement('div');
                 oval.className = 'table-oval';
                 
-                if (table.id === 'Р¤РёРЅР°Р»СЊРЅС‹Р№') {
+                if (table.id === 'Финальный') {
                     oval.classList.add('final-table');
                     const finalLabel = document.createElement('div');
                     finalLabel.className = 'final-table-label';
-                    finalLabel.textContent = 'Р¤РРќРђР›';
+                    finalLabel.textContent = 'ФИНАЛ';
                     ovalContainer.appendChild(finalLabel);
                 }
                 
@@ -2277,7 +2295,7 @@
                     const controls = document.createElement('div');
                     controls.className = 'table-controls';
                     controls.innerHTML = `
-                        <button class="btn btn-warning btn-small" onclick="eliminateFromTable('${table.id}')">Р’С‹Р±С‹РІР°РЅРёРµ</button>
+                        <button class="btn btn-warning btn-small" onclick="eliminateFromTable('${table.id}')">Выбывание</button>
                     `;
                     tableDiv.appendChild(controls);
                 }
@@ -2320,16 +2338,16 @@
             const title = document.getElementById('playerActionTitle');
             const content = document.getElementById('playerActionContent');
             
-            title.textContent = `РРіСЂРѕРє: ${player.name}`;
+            title.textContent = `Игрок: ${player.name}`;
             content.innerHTML = `
                 <div class="form-group">
-                    <label>РљРѕР»РёС‡РµСЃС‚РІРѕ РѕС‡РєРѕРІ</label>
+                    <label>Количество очков</label>
                     <input type="number" id="updateChips" value="${player.chips}" min="0">
                 </div>
                 <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:20px;">
-                    <button class="btn btn-primary" onclick="updatePlayerChips()">рџ’ѕ РћР±РЅРѕРІРёС‚СЊ РѕС‡РєРё</button>
-                    <button class="btn btn-warning" onclick="openMovePlayer()">рџ”„ РџРµСЂРµСЃР°РґРёС‚СЊ</button>
-                    <button class="btn btn-danger" onclick="eliminatePlayer()">вќЊ Р’С‹Р±РёРІР°РЅРёРµ</button>
+                    <button class="btn btn-primary" onclick="updatePlayerChips()">💾 Обновить очки</button>
+                    <button class="btn btn-warning" onclick="openMovePlayer()">🔄 Пересадить</button>
+                    <button class="btn btn-danger" onclick="eliminatePlayer()">❌ Выбивание</button>
                 </div>
             `;
             
@@ -2362,7 +2380,7 @@
             state.grid.tables.forEach(table => {
                 const option = document.createElement('option');
                 option.value = table.id;
-                option.textContent = `РЎС‚РѕР» ${table.id}`;
+                option.textContent = `Стол ${table.id}`;
                 tableSelect.appendChild(option);
             });
             
@@ -2379,7 +2397,7 @@
             for (let i = 1; i <= state.grid.maxPlayersPerTable; i++) {
                 const option = document.createElement('option');
                 option.value = i;
-                option.textContent = `РњРµСЃС‚Рѕ ${i}`;
+                option.textContent = `Место ${i}`;
                 seatSelect.appendChild(option);
             }
         }
@@ -2433,10 +2451,10 @@
         function eliminateFromTable(tableId) {
             const table = state.grid.tables.find(t => t.id == tableId);
             if (!table) {
-                alert('РЎС‚РѕР» РЅРµ РЅР°Р№РґРµРЅ');
+                alert('Стол не найден');
                 return;
             }
-            const playerName = prompt('Р’РІРµРґРёС‚Рµ РёРјСЏ РёРіСЂРѕРєР° РґР»СЏ РІС‹Р±С‹РІР°РЅРёСЏ:');
+            const playerName = prompt('Введите имя игрока для выбывания:');
             if (!playerName) return;
             const player = table.players.find(p => p.name.toLowerCase() === playerName.toLowerCase() && !p.eliminated);
             
@@ -2454,14 +2472,14 @@
                 saveGridData();
                 checkLastPlayer();
             } else {
-                alert('РРіСЂРѕРє РЅРµ РЅР°Р№РґРµРЅ РёР»Рё СѓР¶Рµ РІС‹Р±С‹Р»');
+                alert('Игрок не найден или уже выбыл');
             }
         }
 
         function checkLastPlayer() {
             const activePlayers = state.grid.players.filter(p => !p.eliminated);
             if (activePlayers.length === 1 && state.grid.players.length > 1) {
-                if (confirm('РћСЃС‚Р°Р»СЃСЏ 1 РёРіСЂРѕРє! РќР°Р·РЅР°С‡РёС‚СЊ РµРіРѕ РїРѕР±РµРґРёС‚РµР»РµРј (1 РјРµСЃС‚Рѕ)?')) {
+                if (confirm('Остался 1 игрок! Назначить его победителем (1 место)?')) {
                     activePlayers[0].eliminated = true;
                     state.grid.eliminationOrder.push(activePlayers[0].id);
                     renderTables();
@@ -2475,12 +2493,12 @@
             const activePlayers = state.grid.players.filter(p => !p.eliminated);
             
             if (activePlayers.length === 0) {
-                alert('РќРµС‚ Р°РєС‚РёРІРЅС‹С… РёРіСЂРѕРєРѕРІ');
+                alert('Нет активных игроков');
                 return;
             }
             
             if (activePlayers.length < 2) {
-                alert('Р”Р»СЏ С„РёРЅР°Р»СЊРЅРѕРіРѕ СЃС‚РѕР»Р° РЅСѓР¶РЅРѕ РјРёРЅРёРјСѓРј 2 РёРіСЂРѕРєР°');
+                alert('Для финального стола нужно минимум 2 игрока');
                 return;
             }
             
@@ -2490,7 +2508,7 @@
             }
             
             state.grid.tables = [{
-                id: 'Р¤РёРЅР°Р»СЊРЅС‹Р№',
+                id: 'Финальный',
                 players: shuffled.map((p, idx) => ({
                     ...p,
                     seatNumber: idx + 1
@@ -2505,18 +2523,18 @@
             
             state.grid.maxPlayersPerTable = originalMaxPlayers;
             
-            alert(`Р¤РёРЅР°Р»СЊРЅС‹Р№ СЃС‚РѕР» СЃС„РѕСЂРјРёСЂРѕРІР°РЅ РёР· ${shuffled.length} РѕСЃС‚Р°РІС€РёС…СЃСЏ РёРіСЂРѕРєРѕРІ!`);
+            alert(`Финальный стол сформирован из ${shuffled.length} оставшихся игроков!`);
         }
 
         function endTournament() {
             const activePlayers = state.grid.players.filter(p => !p.eliminated);
             
             if (activePlayers.length === 0) {
-                alert('Р’СЃРµ РёРіСЂРѕРєРё СѓР¶Рµ РІС‹Р±С‹Р»Рё!');
+                alert('Все игроки уже выбыли!');
                 return;
             }
             
-            if (!confirm(`Р—Р°РІРµСЂС€РёС‚СЊ С‚СѓСЂРЅРёСЂ? РћСЃС‚Р°РІС€РёРµСЃСЏ ${activePlayers.length} РёРіСЂРѕРєРѕРІ РїРѕР»СѓС‡Р°С‚ РјРµСЃС‚Р° РїРѕ РїРѕСЂСЏРґРєСѓ.`)) {
+            if (!confirm(`Завершить турнир? Оставшиеся ${activePlayers.length} игроков получат места по порядку.`)) {
                 return;
             }
             
@@ -2534,7 +2552,7 @@
             renderRating();
             saveGridData();
             
-            alert('РўСѓСЂРЅРёСЂ Р·Р°РІРµСЂС€РµРЅ! РњРµСЃС‚Р° СЂР°СЃРїСЂРµРґРµР»РµРЅС‹.');
+            alert('Турнир завершен! Места распределены.');
         }
 
         function renderRating() {
@@ -2544,7 +2562,7 @@
             const totalPlayers = state.grid.players.length;
             
             if (totalPlayers === 0) {
-                ratingList.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px;">РќРµС‚ СѓС‡Р°СЃС‚РЅРёРєРѕРІ</p>';
+                ratingList.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px;">Нет участников</p>';
                 return;
             }
             
@@ -2595,8 +2613,8 @@
                     item.innerHTML = `
                         <div class="rating-position">${place}</div>
                         <div class="rating-name">${player.name}</div>
-                        <div class="rating-chips">${player.chips} РѕС‡РєРѕРІ</div>
-                        <div class="rating-points">${points > 0 ? points + ' РѕС‡РєРѕРІ' : '0 РѕС‡РєРѕРІ'}</div>
+                        <div class="rating-chips">${player.chips} очков</div>
+                        <div class="rating-points">${points > 0 ? points + ' очков' : '0 очков'}</div>
                     `;
                 } else {
                     item.classList.add('waiting');
@@ -2605,9 +2623,9 @@
                     
                     item.innerHTML = `
                         <div class="rating-position">${place}</div>
-                        <div class="rating-name">вЏі РћР¶РёРґР°РЅРёРµ РёРіСЂРѕРєР°...</div>
+                        <div class="rating-name">⏳ Ожидание игрока...</div>
                         <div class="rating-chips">-</div>
-                        <div class="rating-points">${points > 0 ? points + ' РѕС‡РєРѕРІ' : '0 РѕС‡РєРѕРІ'}</div>
+                        <div class="rating-points">${points > 0 ? points + ' очков' : '0 очков'}</div>
                     `;
                 }
                 
@@ -2619,7 +2637,7 @@
             const totalPlayers = state.grid.players.length;
             
             if (totalPlayers === 0) {
-                alert('РќРµС‚ СѓС‡Р°СЃС‚РЅРёРєРѕРІ РґР»СЏ СЃРѕС…СЂР°РЅРµРЅРёСЏ');
+                alert('Нет участников для сохранения');
                 return;
             }
             
@@ -2673,8 +2691,8 @@
                     item.innerHTML = `
                         <div class="rating-position">${place}</div>
                         <div class="rating-name">${player.name}</div>
-                        <div class="rating-chips">${player.chips} РѕС‡РєРѕРІ</div>
-                        <div class="rating-points">${points > 0 ? points + ' РѕС‡РєРѕРІ' : '0 РѕС‡РєРѕРІ'}</div>
+                        <div class="rating-chips">${player.chips} очков</div>
+                        <div class="rating-points">${points > 0 ? points + ' очков' : '0 очков'}</div>
                     `;
                 } else {
                     item.classList.add('waiting');
@@ -2683,9 +2701,9 @@
                     
                     item.innerHTML = `
                         <div class="rating-position">${place}</div>
-                        <div class="rating-name">вЏі РћР¶РёРґР°РЅРёРµ РёРіСЂРѕРєР°...</div>
+                        <div class="rating-name">⏳ Ожидание игрока...</div>
                         <div class="rating-chips">-</div>
-                        <div class="rating-points">${points > 0 ? points + ' РѕС‡РєРѕРІ' : '0 РѕС‡РєРѕРІ'}</div>
+                        <div class="rating-points">${points > 0 ? points + ' очков' : '0 очков'}</div>
                     `;
                 }
                 
@@ -2719,12 +2737,12 @@
                 link.href = imgData;
                 link.click();
                 
-                alert('РЎРєСЂРёРЅС€РѕС‚ СЂРµР№С‚РёРЅРіР° СЃРѕС…СЂР°РЅС‘РЅ РІ JPG!');
+                alert('Скриншот рейтинга сохранён в JPG!');
             }).catch(err => {
                 screenshotContainer.style.left = '-9999px';
                 screenshotContainer.style.position = 'fixed';
                 screenshotContainer.style.zIndex = '-1';
-                alert('РћС€РёР±РєР° РїСЂРё СЃРѕР·РґР°РЅРёРё СЃРєСЂРёРЅС€РѕС‚Р°: ' + err.message);
+                alert('Ошибка при создании скриншота: ' + err.message);
             });
         }
 
@@ -2739,7 +2757,7 @@
                 
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td><strong>${i} РјРµСЃС‚Рѕ</strong></td>
+                    <td><strong>${i} место</strong></td>
                     <td><input type="number" id="pointsPlace${i}" value="${percentage}" min="0" max="100" step="0.1">%</td>
                 `;
                 tbody.appendChild(row);
@@ -2761,11 +2779,11 @@
             }
             
             if (Math.abs(totalPercentage - 100) > 0.1) {
-                alert(`РЎСѓРјРјР° РїСЂРѕС†РµРЅС‚РѕРІ РґРѕР»Р¶РЅР° Р±С‹С‚СЊ 100%! РЎРµР№С‡Р°СЃ: ${totalPercentage}%`);
+                alert(`Сумма процентов должна быть 100%! Сейчас: ${totalPercentage}%`);
                 return;
             }
             
-            alert('РљРѕРЅС„РёРіСѓСЂР°С†РёСЏ РѕС‡РєРѕРІ СЃРѕС…СЂР°РЅРµРЅР°!');
+            alert('Конфигурация очков сохранена!');
             renderRating();
         }
 
@@ -2819,7 +2837,7 @@
                     <td><input type="number" value="${level.sb}" data-level="${index}" data-field="sb" onchange="updateLevel(${index}, 'sb', this.value)"></td>
                     <td><input type="number" value="${level.bb}" data-level="${index}" data-field="bb" onchange="updateLevel(${index}, 'bb', this.value)"></td>
                     <td><input type="number" value="${level.ante}" data-level="${index}" data-field="ante" onchange="updateLevel(${index}, 'ante', this.value)"></td>
-                    <td><button class="btn btn-danger btn-small" onclick="deleteLevel(${index})">Г—</button></td>
+                    <td><button class="btn btn-danger btn-small" onclick="deleteLevel(${index})">×</button></td>
                 `;
                 tbody.appendChild(row);
             });
@@ -2841,12 +2859,12 @@
                 });
                 renderLevelsTable();
             } else {
-                alert('Р”РѕР»Р¶РµРЅ РѕСЃС‚Р°С‚СЊСЃСЏ С…РѕС‚СЏ Р±С‹ РѕРґРёРЅ СѓСЂРѕРІРµРЅСЊ');
+                alert('Должен остаться хотя бы один уровень');
             }
         }
 
         function resetAll() {
-            if (!confirm('Р’С‹ СѓРІРµСЂРµРЅС‹? Р’СЃРµ РґР°РЅРЅС‹Рµ Р±СѓРґСѓС‚ СѓРґР°Р»РµРЅС‹: РЅР°СЃС‚СЂРѕР№РєРё, СЂРµР№С‚РёРЅРі Рё СѓС‡Р°СЃС‚РЅРёРєРё СЃРµС‚РєРё.')) {
+            if (!confirm('Вы уверены? Все данные будут удалены: настройки, рейтинг и участники сетки.')) {
                 return;
             }
             
@@ -2865,7 +2883,7 @@
             
             clearGridData();
             
-            alert('Р’СЃРµ РґР°РЅРЅС‹Рµ СЃР±СЂРѕС€РµРЅС‹!');
+            alert('Все данные сброшены!');
         }
 
         function showPage(pageId) {
@@ -2913,7 +2931,7 @@
                 editorBtn.style.display = 'inline-block';
                 loginBtn.style.display = 'none';
                 logoutBtn.style.display = 'inline-block';
-                userRole.textContent = 'РђРґРјРёРЅ';
+                userRole.textContent = 'Админ';
                 if (playerRegistrationSection) playerRegistrationSection.style.display = 'block';
                 if (timerControls) timerControls.style.display = 'flex';
                 if (saveRatingBtn) saveRatingBtn.style.display = 'inline-block';
@@ -2921,7 +2939,7 @@
                 editorBtn.style.display = 'none';
                 loginBtn.style.display = 'inline-block';
                 logoutBtn.style.display = 'none';
-                userRole.textContent = 'Р“РѕСЃС‚СЊ';
+                userRole.textContent = 'Гость';
                 if (playerRegistrationSection) playerRegistrationSection.style.display = 'none';
                 if (timerControls) timerControls.style.display = 'none';
                 if (saveRatingBtn) saveRatingBtn.style.display = 'none';
@@ -2996,7 +3014,7 @@
                 document.getElementById('adminPassword').value = '';
                 updateAdminUI();
             } else {
-                alert('РќРµРІРµСЂРЅС‹Р№ РїР°СЂРѕР»СЊ');
+                alert('Неверный пароль');
             }
         });
 
@@ -3053,7 +3071,7 @@
             
             applyTemplateToTimer();
             
-            alert('РЈСЂРѕРІРЅРё СЃРѕС…СЂР°РЅРµРЅС‹! РќР°СЃС‚СЂРѕР№РєРё РїСЂРёРјРµРЅРµРЅС‹ Рє С‚Р°Р№РјРµСЂСѓ.');
+            alert('Уровни сохранены! Настройки применены к таймеру.');
         });
 
         document.getElementById('resetAllBtn').addEventListener('click', () => {
@@ -3080,21 +3098,21 @@
         document.getElementById('customLevelSound').addEventListener('change', (e) => {
             if (e.target.files[0]) {
                 state.settings.customLevelSound = e.target.files[0];
-                document.getElementById('customLevelSoundName').textContent = 'рџЋµ ' + e.target.files[0].name;
+                document.getElementById('customLevelSoundName').textContent = '🎵 ' + e.target.files[0].name;
             }
         });
 
         document.getElementById('customBreakSound').addEventListener('change', (e) => {
             if (e.target.files[0]) {
                 state.settings.customBreakSound = e.target.files[0];
-                document.getElementById('customBreakSoundName').textContent = 'рџЋµ ' + e.target.files[0].name;
+                document.getElementById('customBreakSoundName').textContent = '🎵 ' + e.target.files[0].name;
             }
         });
 
         document.getElementById('customBigBreakSound').addEventListener('change', (e) => {
             if (e.target.files[0]) {
                 state.settings.customBigBreakSound = e.target.files[0];
-                document.getElementById('customBigBreakSoundName').textContent = 'рџЋµ ' + e.target.files[0].name;
+                document.getElementById('customBigBreakSoundName').textContent = '🎵 ' + e.target.files[0].name;
             }
         });
 
@@ -3116,7 +3134,7 @@
                 audio.volume = state.settings.volume / 100;
                 audio.play();
             } else {
-                alert('РЎРЅР°С‡Р°Р»Р° Р·Р°РіСЂСѓР·РёС‚Рµ Р°СѓРґРёРѕС„Р°Р№Р»');
+                alert('Сначала загрузите аудиофайл');
             }
         });
 
@@ -3126,7 +3144,7 @@
                 audio.volume = state.settings.volume / 100;
                 audio.play();
             } else {
-                alert('РЎРЅР°С‡Р°Р»Р° Р·Р°РіСЂСѓР·РёС‚Рµ Р°СѓРґРёРѕС„Р°Р№Р»');
+                alert('Сначала загрузите аудиофайл');
             }
         });
 
@@ -3136,30 +3154,30 @@
                 audio.volume = state.settings.volume / 100;
                 audio.play();
             } else {
-                alert('РЎРЅР°С‡Р°Р»Р° Р·Р°РіСЂСѓР·РёС‚Рµ Р°СѓРґРёРѕС„Р°Р№Р»');
+                alert('Сначала загрузите аудиофайл');
             }
         });
 
         document.getElementById('removeCustomLevelSound').addEventListener('click', () => {
             state.settings.customLevelSound = null;
             document.getElementById('customLevelSound').value = '';
-            document.getElementById('customLevelSoundName').textContent = 'Р¤Р°Р№Р» РЅРµ РІС‹Р±СЂР°РЅ';
+            document.getElementById('customLevelSoundName').textContent = 'Файл не выбран';
         });
 
         document.getElementById('removeCustomBreakSound').addEventListener('click', () => {
             state.settings.customBreakSound = null;
             document.getElementById('customBreakSound').value = '';
-            document.getElementById('customBreakSoundName').textContent = 'Р¤Р°Р№Р» РЅРµ РІС‹Р±СЂР°РЅ';
+            document.getElementById('customBreakSoundName').textContent = 'Файл не выбран';
         });
 
         document.getElementById('removeCustomBigBreakSound').addEventListener('click', () => {
             state.settings.customBigBreakSound = null;
             document.getElementById('customBigBreakSound').value = '';
-            document.getElementById('customBigBreakSoundName').textContent = 'Р¤Р°Р№Р» РЅРµ РІС‹Р±СЂР°РЅ';
+            document.getElementById('customBigBreakSoundName').textContent = 'Файл не выбран';
         });
 
         document.getElementById('saveSoundBtn').addEventListener('click', () => {
-            alert('РќР°СЃС‚СЂРѕР№РєРё Р·РІСѓРєР° СЃРѕС…СЂР°РЅРµРЅС‹!');
+            alert('Настройки звука сохранены!');
         });
 
         document.getElementById('volumeSlider').addEventListener('input', (e) => {
@@ -3210,7 +3228,7 @@
                     reader.onload = function(e) {
                         try {
                             const templateData = JSON.parse(e.target.result);
-                            const templateName = templateData.name || 'РРјРїРѕСЂС‚РёСЂРѕРІР°РЅРЅС‹Р№ С€Р°Р±Р»РѕРЅ';
+                            const templateName = templateData.name || 'Импортированный шаблон';
                             
                             state.templates[templateName] = {
                                 levels: templateData.levels || [],
@@ -3222,14 +3240,14 @@
                             };
                             
                             state.currentTemplate = templateName;
-                            document.getElementById('currentTemplate').textContent = templateName + ' (РёРјРїРѕСЂС‚)';
+                            document.getElementById('currentTemplate').textContent = templateName + ' (импорт)';
                             
                             applyTemplateToTimer();
                             
-                            alert(`РЁР°Р±Р»РѕРЅ "${templateName}" СѓСЃРїРµС€РЅРѕ РёРјРїРѕСЂС‚РёСЂРѕРІР°РЅ Рё РїСЂРёРјРµРЅС‘РЅ Рє С‚Р°Р№РјРµСЂСѓ!`);
+                            alert(`Шаблон "${templateName}" успешно импортирован и применён к таймеру!`);
                             renderTemplatesList();
                         } catch (error) {
-                            alert('РћС€РёР±РєР° РїСЂРё РёРјРїРѕСЂС‚Рµ С„Р°Р№Р»Р°: ' + error.message);
+                            alert('Ошибка при импорте файла: ' + error.message);
                         }
                     };
                     reader.readAsText(file);
@@ -3240,12 +3258,12 @@
         });
 
         document.getElementById('newTemplateBtn').addEventListener('click', function() {
-            const templateName = prompt('Р’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ РЅРѕРІРѕРіРѕ С€Р°Р±Р»РѕРЅР°:');
+            const templateName = prompt('Введите название нового шаблона:');
             if (templateName && templateName.trim()) {
                 const trimmedName = templateName.trim();
                 
                 if (state.templates[trimmedName]) {
-                    alert('РЁР°Р±Р»РѕРЅ СЃ С‚Р°РєРёРј РЅР°Р·РІР°РЅРёРµРј СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚!');
+                    alert('Шаблон с таким названием уже существует!');
                     return;
                 }
                 
@@ -3265,7 +3283,7 @@
                 
                 applyTemplateToTimer();
                 
-                alert(`РЁР°Р±Р»РѕРЅ "${trimmedName}" СЃРѕР·РґР°РЅ Рё РїСЂРёРјРµРЅС‘РЅ Рє С‚Р°Р№РјРµСЂСѓ!`);
+                alert(`Шаблон "${trimmedName}" создан и применён к таймеру!`);
                 renderTemplatesList();
             }
         });
@@ -3287,23 +3305,23 @@
                     <div class="template-item-header">
                         <div class="template-item-info">
                             <h3 style="color: ${isActive ? 'var(--primary-color)' : 'var(--text-color)'};">
-                                ${templateName} ${isActive ? 'вњ“ РђРєС‚РёРІРµРЅ' : ''}
+                                ${templateName} ${isActive ? '✓ Активен' : ''}
                             </h3>
                             <p>
-                                ${template.levels.length} СѓСЂРѕРІРЅРµР№ вЂў ${template.levelDuration} РјРёРЅ/СѓСЂРѕРІРµРЅСЊ
-                                ${template.bigBreakAfterLevel > 0 ? `вЂў Р±РѕР»СЊС€РѕР№ РїРµСЂРµСЂС‹РІ РїРѕСЃР»Рµ СѓСЂ. ${template.bigBreakAfterLevel}` : ''}
+                                ${template.levels.length} уровней • ${template.levelDuration} мин/уровень
+                                ${template.bigBreakAfterLevel > 0 ? `• большой перерыв после ур. ${template.bigBreakAfterLevel}` : ''}
                             </p>
                         </div>
                         <div class="template-item-actions">
                             <button class="btn ${isActive ? 'btn-secondary' : 'btn-success'}" 
                                     onclick="useTemplate('${templateName}')" 
                                     ${isActive ? 'disabled' : ''}>
-                                ${isActive ? 'РСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ' : 'РСЃРїРѕР»СЊР·РѕРІР°С‚СЊ'}
+                                ${isActive ? 'Используется' : 'Использовать'}
                             </button>
-                            <button class="btn btn-secondary" onclick="editTemplate('${templateName}')">вњЏпёЏ РР·РјРµРЅРёС‚СЊ</button>
-                            <button class="btn btn-secondary" onclick="exportSpecificTemplate('${templateName}')">рџ“Ґ Р­РєСЃРїРѕСЂС‚</button>
+                            <button class="btn btn-secondary" onclick="editTemplate('${templateName}')">✏️ Изменить</button>
+                            <button class="btn btn-secondary" onclick="exportSpecificTemplate('${templateName}')">📥 Экспорт</button>
                             ${Object.keys(state.templates).length > 1 ? 
-                                `<button class="btn btn-danger" onclick="deleteTemplate('${templateName}')">рџ—‘пёЏ</button>` : ''}
+                                `<button class="btn btn-danger" onclick="deleteTemplate('${templateName}')">🗑️</button>` : ''}
                         </div>
                     </div>
                 `;
@@ -3358,11 +3376,11 @@
 
         function deleteTemplate(templateName) {
             if (Object.keys(state.templates).length <= 1) {
-                alert('РќРµР»СЊР·СЏ СѓРґР°Р»РёС‚СЊ РїРѕСЃР»РµРґРЅРёР№ С€Р°Р±Р»РѕРЅ!');
+                alert('Нельзя удалить последний шаблон!');
                 return;
             }
             
-            if (confirm(`РЈРґР°Р»РёС‚СЊ С€Р°Р±Р»РѕРЅ "${templateName}"?`)) {
+            if (confirm(`Удалить шаблон "${templateName}"?`)) {
                 delete state.templates[templateName];
                 
                 if (state.currentTemplate === templateName) {
