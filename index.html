@@ -5923,6 +5923,627 @@
     window.loadRulesText = loadRulesText;
 
 })();
+
+		/************************************************************
+ * PATCH: Правила через Supabase
+ * Админ редактирует, Гость только читает
+ ************************************************************/
+(function () {
+
+    /********************************************************
+     * ВСТАВЬ СЮДА ТВОИ ДАННЫЕ SUPABASE
+     ********************************************************/
+    const RULES_SUPABASE_URL = 'https://ivvzrjnutuyoqtlzpbqx.supabase.co';
+    const RULES_SUPABASE_ANON_KEY = 'sb_publishable_yazZ-oVnnAzq4zci1mlRZQ_7XxA2Np-';
+
+    let rulesSupabase = null;
+    let currentRulesText = '';
+    let rulesLoaded = false;
+
+    function rulesSupabaseConfigured() {
+        return (
+            RULES_SUPABASE_URL &&
+            RULES_SUPABASE_ANON_KEY &&
+            !RULES_SUPABASE_URL.includes('ВСТАВЬ_СЮДА') &&
+            !RULES_SUPABASE_ANON_KEY.includes('ВСТАВЬ_СЮДА')
+        );
+    }
+
+    function loadSupabaseForRules() {
+        return new Promise((resolve, reject) => {
+            if (window.supabase) {
+                resolve();
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+    }
+
+    function escapeHtml(text) {
+        return String(text || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
+    function defaultRulesText() {
+        return `ПРАВИЛА ПОКЕРНОГО ТУРНИРА
+
+1. Общие положения
+
+Турнир проводится по правилам Texas Hold'em No-Limit. Все участники обязаны соблюдать порядок игры, уважительно относиться к другим игрокам и выполнять решения организатора турнира.
+
+2. Старт турнира
+
+Каждый участник получает стартовое количество очков, указанное организатором. Игрок считается зарегистрированным после внесения его имени в список участников.
+
+3. Блайнды и уровни
+
+Блайнды повышаются согласно структуре таймера. После окончания уровня начинается следующий уровень или перерыв, если он предусмотрен настройками турнира.
+
+4. Перерывы
+
+Обычные и большие перерывы проводятся согласно расписанию таймера.
+
+5. Выбывание игроков
+
+Игрок выбывает из турнира, когда теряет все очки. Место игрока фиксируется в рейтинге согласно порядку выбывания.
+
+6. Финальный стол
+
+Финальный стол формируется организатором из оставшихся игроков.
+
+7. Завершение турнира
+
+Турнир завершается после определения победителя или по решению организатора.
+
+8. Спорные ситуации
+
+Все спорные ситуации решаются организатором турнира. Решение организатора является окончательным.`;
+    }
+
+    /********************************************************
+     * СТИЛИ
+     ********************************************************/
+
+    function addRulesAdminStyles() {
+        if (document.getElementById('rulesAdminPatchStyles')) return;
+
+        const style = document.createElement('style');
+        style.id = 'rulesAdminPatchStyles';
+
+        style.textContent = `
+            .rules-admin-container {
+                max-width: 1100px;
+                margin: 0 auto;
+                padding: clamp(15px, 3vw, 30px) clamp(15px, 2vw, 20px);
+            }
+
+            .rules-admin-card {
+                background: var(--card-bg);
+                border: 2px solid var(--primary-color);
+                border-radius: 15px;
+                padding: clamp(20px, 4vw, 40px);
+                box-shadow: 0 0 30px rgba(0, 191, 255, 0.18);
+            }
+
+            .rules-admin-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 15px;
+                flex-wrap: wrap;
+                margin-bottom: 25px;
+                padding-bottom: 15px;
+                border-bottom: 1px solid var(--border-color);
+            }
+
+            .rules-admin-header h2 {
+                color: var(--primary-color);
+                font-size: clamp(24px, 3vw, 34px);
+                margin: 0;
+            }
+
+            .rules-view-text {
+                color: var(--text-color);
+                font-size: clamp(16px, 1.25vw, 19px);
+                line-height: 1.75;
+                text-align: justify;
+                white-space: pre-wrap;
+                word-break: normal;
+                overflow-wrap: break-word;
+            }
+
+            .rules-editor-box {
+                margin-top: 20px;
+            }
+
+            .rules-editor-box label {
+                display: block;
+                color: var(--primary-color);
+                font-weight: 700;
+                margin-bottom: 10px;
+                font-size: 16px;
+            }
+
+            .rules-editor-textarea {
+                width: 100%;
+                min-height: 520px;
+                resize: vertical;
+                background: var(--bg-color);
+                border: 1px solid var(--border-color);
+                border-radius: 10px;
+                color: var(--text-color);
+                padding: 18px;
+                font-size: 16px;
+                line-height: 1.6;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            }
+
+            .rules-editor-textarea:focus {
+                outline: none;
+                border-color: var(--primary-color);
+                box-shadow: 0 0 15px rgba(0, 191, 255, 0.15);
+            }
+
+            .rules-editor-actions {
+                display: flex;
+                gap: 10px;
+                flex-wrap: wrap;
+                margin-top: 15px;
+            }
+
+            .rules-status-message {
+                margin-top: 12px;
+                color: var(--text-muted);
+                font-size: 14px;
+            }
+
+            .rules-admin-note {
+                margin-bottom: 20px;
+                padding: 15px;
+                background: rgba(0, 191, 255, 0.08);
+                border: 1px solid var(--border-color);
+                border-radius: 8px;
+                color: var(--text-muted);
+                line-height: 1.5;
+            }
+
+            .rules-empty-text {
+                color: var(--text-muted);
+                font-style: italic;
+                text-align: center;
+                padding: 30px;
+            }
+
+            @media (max-width: 600px) {
+                .rules-view-text {
+                    text-align: left;
+                    line-height: 1.65;
+                }
+
+                .rules-editor-textarea {
+                    min-height: 420px;
+                }
+            }
+        `;
+
+        document.head.appendChild(style);
+    }
+
+    /********************************************************
+     * КНОПКА ПРАВИЛ
+     ********************************************************/
+
+    function addRulesButtonFixed() {
+        /*
+         * Удаляем старую кнопку, если она была создана предыдущим патчем.
+         */
+        const oldBtn = document.getElementById('rulesBtn');
+        if (oldBtn) {
+            oldBtn.remove();
+        }
+
+        const ratingBtn = document.getElementById('ratingBtn');
+        const userInfo = document.querySelector('.user-info');
+
+        if (!userInfo) return;
+
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-warning nav-btn';
+        btn.id = 'rulesBtn';
+        btn.type = 'button';
+        btn.setAttribute('data-page', 'rulesPage');
+        btn.textContent = '📜 Правила';
+
+        /*
+         * Ставим перед кнопкой Рейтинг.
+         */
+        if (ratingBtn && ratingBtn.parentNode) {
+            ratingBtn.parentNode.insertBefore(btn, ratingBtn);
+        } else {
+            userInfo.insertBefore(btn, userInfo.firstChild);
+        }
+
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            openRulesPageAdmin();
+        });
+    }
+
+    /********************************************************
+     * СТРАНИЦА ПРАВИЛ
+     ********************************************************/
+
+    function createRulesPageAdmin() {
+        /*
+         * Удаляем старую страницу правил, если она была от прошлого патча.
+         */
+        const oldPage = document.getElementById('rulesPage');
+        if (oldPage) {
+            oldPage.remove();
+        }
+
+        const page = document.createElement('div');
+        page.className = 'page';
+        page.id = 'rulesPage';
+
+        page.innerHTML = `
+            <div class="rules-admin-container">
+                <div class="rules-admin-card">
+                    <div class="rules-admin-header">
+                        <h2>📜 Правила турнира</h2>
+                        <button class="btn btn-secondary nav-btn" data-page="timerPage">← Назад к таймеру</button>
+                    </div>
+
+                    <div id="rulesAdminContent"></div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(page);
+    }
+
+    function renderRulesPageContent() {
+        const content = document.getElementById('rulesAdminContent');
+
+        if (!content) return;
+
+        if (state.isAdmin) {
+            content.innerHTML = `
+                <div class="rules-admin-note">
+                    Вы вошли как <strong>Админ</strong>. Здесь можно написать или изменить правила турнира.
+                    После сохранения текст сразу станет доступен гостям на всех устройствах.
+                </div>
+
+                <div class="rules-editor-box">
+                    <label for="rulesEditorTextarea">Текст правил</label>
+                    <textarea class="rules-editor-textarea" id="rulesEditorTextarea"></textarea>
+
+                    <div class="rules-editor-actions">
+                        <button class="btn btn-primary" id="saveRulesTextBtn">💾 Сохранить правила</button>
+                        <button class="btn btn-secondary" id="loadDefaultRulesBtn">📋 Вставить пример правил</button>
+                    </div>
+
+                    <div class="rules-status-message" id="rulesStatusMessage"></div>
+                </div>
+            `;
+
+            const textarea = document.getElementById('rulesEditorTextarea');
+            const saveBtn = document.getElementById('saveRulesTextBtn');
+            const defaultBtn = document.getElementById('loadDefaultRulesBtn');
+
+            if (textarea) {
+                textarea.value = currentRulesText || '';
+            }
+
+            if (saveBtn) {
+                saveBtn.addEventListener('click', saveRulesFromEditor);
+            }
+
+            if (defaultBtn) {
+                defaultBtn.addEventListener('click', function () {
+                    if (!textarea) return;
+
+                    if (
+                        textarea.value.trim() &&
+                        !confirm('Заменить текущий текст примером правил?')
+                    ) {
+                        return;
+                    }
+
+                    textarea.value = defaultRulesText();
+                });
+            }
+        } else {
+            const text = currentRulesText || '';
+
+            if (!text.trim()) {
+                content.innerHTML = `
+                    <div class="rules-empty-text">
+                        Правила пока не заполнены администратором.
+                    </div>
+                `;
+            } else {
+                content.innerHTML = `
+                    <div class="rules-view-text">${escapeHtml(text)}</div>
+                `;
+            }
+        }
+    }
+
+    function setRulesStatus(message, isError) {
+        const status = document.getElementById('rulesStatusMessage');
+
+        if (!status) return;
+
+        status.textContent = message || '';
+        status.style.color = isError ? 'var(--danger-color)' : 'var(--text-muted)';
+    }
+
+    /********************************************************
+     * SUPABASE: ЗАГРУЗКА / СОХРАНЕНИЕ / REALTIME
+     ********************************************************/
+
+    async function initRulesSupabase() {
+        if (!rulesSupabaseConfigured()) {
+            console.warn('Supabase для Правил не настроен.');
+            loadRulesFromLocalStorage();
+            return;
+        }
+
+        try {
+            await loadSupabaseForRules();
+
+            rulesSupabase = window.supabase.createClient(
+                RULES_SUPABASE_URL,
+                RULES_SUPABASE_ANON_KEY
+            );
+
+            await loadRulesFromSupabase();
+            subscribeRulesRealtime();
+        } catch (error) {
+            console.error('Ошибка подключения правил к Supabase:', error);
+            loadRulesFromLocalStorage();
+        }
+    }
+
+    async function loadRulesFromSupabase() {
+        if (!rulesSupabase) return;
+
+        try {
+            const { data, error } = await rulesSupabase
+                .from('app_state')
+                .select('key,value,updated_at')
+                .eq('key', 'rules')
+                .maybeSingle();
+
+            if (error) {
+                console.error('Ошибка загрузки правил:', error);
+                loadRulesFromLocalStorage();
+                return;
+            }
+
+            if (data && data.value) {
+                currentRulesText = String(data.value.text || '');
+                localStorage.setItem('pokerRulesText', currentRulesText);
+            } else {
+                loadRulesFromLocalStorage();
+            }
+
+            rulesLoaded = true;
+            renderRulesPageContent();
+        } catch (error) {
+            console.error('loadRulesFromSupabase error:', error);
+            loadRulesFromLocalStorage();
+        }
+    }
+
+    function loadRulesFromLocalStorage() {
+        currentRulesText = localStorage.getItem('pokerRulesText') || '';
+        rulesLoaded = true;
+        renderRulesPageContent();
+    }
+
+    async function saveRulesToSupabase(text) {
+        localStorage.setItem('pokerRulesText', text);
+
+        if (!rulesSupabase) {
+            currentRulesText = text;
+            renderRulesPageContent();
+            return;
+        }
+
+        const { error } = await rulesSupabase
+            .from('app_state')
+            .upsert({
+                key: 'rules',
+                value: {
+                    text: text,
+                    updatedAt: new Date().toISOString()
+                },
+                updated_at: new Date().toISOString()
+            });
+
+        if (error) {
+            throw error;
+        }
+    }
+
+    function subscribeRulesRealtime() {
+        if (!rulesSupabase) return;
+
+        rulesSupabase
+            .channel('rules_realtime_channel')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'app_state',
+                    filter: 'key=eq.rules'
+                },
+                payload => {
+                    if (!payload || !payload.new || !payload.new.value) return;
+
+                    currentRulesText = String(payload.new.value.text || '');
+                    localStorage.setItem('pokerRulesText', currentRulesText);
+
+                    /*
+                     * Если открыт просмотр гостя — обновляем сразу.
+                     * Если открыт админский редактор — не перетираем текст,
+                     * который админ может прямо сейчас печатать.
+                     */
+                    const rulesPage = document.getElementById('rulesPage');
+                    const textarea = document.getElementById('rulesEditorTextarea');
+
+                    if (
+                        rulesPage &&
+                        rulesPage.classList.contains('active') &&
+                        !textarea
+                    ) {
+                        renderRulesPageContent();
+                    }
+                }
+            )
+            .subscribe();
+    }
+
+    async function saveRulesFromEditor() {
+        if (!state.isAdmin) {
+            alert('Сохранять правила может только админ.');
+            return;
+        }
+
+        const textarea = document.getElementById('rulesEditorTextarea');
+
+        if (!textarea) return;
+
+        const text = textarea.value.trim();
+
+        try {
+            setRulesStatus('Сохраняем...', false);
+
+            currentRulesText = text;
+
+            await saveRulesToSupabase(text);
+
+            setRulesStatus('Правила сохранены. Гости уже могут их читать.', false);
+
+            alert('Правила сохранены!');
+        } catch (error) {
+            console.error(error);
+            setRulesStatus('Ошибка сохранения: ' + error.message, true);
+            alert('Ошибка сохранения правил: ' + error.message);
+        }
+    }
+
+    /********************************************************
+     * ОТКРЫТИЕ СТРАНИЦЫ
+     ********************************************************/
+
+    function openRulesPageAdmin() {
+        addRulesAdminStyles();
+
+        if (!document.getElementById('rulesPage')) {
+            createRulesPageAdmin();
+        }
+
+        document.querySelectorAll('.page').forEach(page => {
+            page.classList.remove('active');
+        });
+
+        const page = document.getElementById('rulesPage');
+
+        if (page) {
+            page.classList.add('active');
+        }
+
+        try {
+            history.replaceState(null, '', '#rulesPage');
+        } catch (e) {}
+
+        renderRulesPageContent();
+
+        if (!rulesLoaded) {
+            initRulesSupabase();
+        } else if (rulesSupabase) {
+            loadRulesFromSupabase();
+        }
+    }
+
+    /********************************************************
+     * ПОДКЛЮЧЕНИЕ К showPage И updateAdminUI
+     ********************************************************/
+
+    const previousShowPageRulesAdmin = window.showPage || showPage;
+
+    if (typeof previousShowPageRulesAdmin === 'function') {
+        showPage = function (pageId) {
+            if (pageId === 'rulesPage') {
+                openRulesPageAdmin();
+                return;
+            }
+
+            previousShowPageRulesAdmin(pageId);
+        };
+
+        window.showPage = showPage;
+    }
+
+    const previousUpdateAdminUIRules = window.updateAdminUI || updateAdminUI;
+
+    if (typeof previousUpdateAdminUIRules === 'function') {
+        updateAdminUI = function () {
+            previousUpdateAdminUIRules();
+
+            /*
+             * Кнопка Правила должна быть видна всем:
+             * и админу, и гостю.
+             */
+            addRulesButtonFixed();
+
+            const rulesPage = document.getElementById('rulesPage');
+
+            if (rulesPage && rulesPage.classList.contains('active')) {
+                renderRulesPageContent();
+            }
+        };
+
+        window.updateAdminUI = updateAdminUI;
+    }
+
+    /********************************************************
+     * ЗАПУСК ПАТЧА
+     ********************************************************/
+
+    addRulesAdminStyles();
+    createRulesPageAdmin();
+    addRulesButtonFixed();
+
+    /*
+     * Загружаем правила сразу, чтобы у гостя они были готовы.
+     */
+    initRulesSupabase();
+
+    /*
+     * Если открыли сайт сразу по ссылке #rulesPage.
+     */
+    const hash = window.location.hash.replace('#', '').split('?')[0];
+
+    if (hash === 'rulesPage') {
+        setTimeout(openRulesPageAdmin, 100);
+    }
+
+    window.openRulesPageAdmin = openRulesPageAdmin;
+    window.saveRulesFromEditor = saveRulesFromEditor;
+
+})();
     </script>
 </body>
 </html>
