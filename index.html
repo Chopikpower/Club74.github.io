@@ -4884,6 +4884,753 @@
     window.loadPlayersFromFile = loadPlayersFromFile;
 
 })();
+		/************************************************************
+ * PATCH: общее прошедшее время, исправление перемотки,
+ * страница Правила с загрузкой rules.txt
+ ************************************************************/
+(function () {
+
+    /********************************************************
+     * 1. СТРАНИЦА ПРАВИЛ
+     ********************************************************/
+
+    function addRulesStyles() {
+        if (document.getElementById('rulesPatchStyles')) return;
+
+        const style = document.createElement('style');
+        style.id = 'rulesPatchStyles';
+        style.textContent = `
+            .rules-container {
+                max-width: 1100px;
+                margin: 0 auto;
+                padding: clamp(15px, 3vw, 30px) clamp(15px, 2vw, 20px);
+            }
+
+            .rules-card {
+                background: var(--card-bg);
+                border: 2px solid var(--primary-color);
+                border-radius: 15px;
+                padding: clamp(20px, 4vw, 40px);
+                box-shadow: 0 0 30px rgba(0, 191, 255, 0.15);
+            }
+
+            .rules-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 15px;
+                flex-wrap: wrap;
+                margin-bottom: 25px;
+                padding-bottom: 15px;
+                border-bottom: 1px solid var(--border-color);
+            }
+
+            .rules-header h2 {
+                color: var(--primary-color);
+                font-size: clamp(24px, 3vw, 34px);
+            }
+
+            .rules-text {
+                color: var(--text-color);
+                font-size: clamp(16px, 1.3vw, 19px);
+                line-height: 1.75;
+                text-align: justify;
+                white-space: pre-wrap;
+                word-break: normal;
+                overflow-wrap: break-word;
+            }
+
+            .rules-muted {
+                color: var(--text-muted);
+                font-size: 14px;
+                margin-top: 15px;
+            }
+
+            @media (max-width: 600px) {
+                .rules-text {
+                    text-align: left;
+                    line-height: 1.65;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    function addRulesButton() {
+        if (document.getElementById('rulesBtn')) return;
+
+        const ratingBtn = document.getElementById('ratingBtn');
+        if (!ratingBtn || !ratingBtn.parentNode) return;
+
+        const rulesBtn = document.createElement('button');
+        rulesBtn.className = ratingBtn.className;
+        rulesBtn.id = 'rulesBtn';
+        rulesBtn.setAttribute('data-page', 'rulesPage');
+        rulesBtn.textContent = '📜 Правила';
+
+        ratingBtn.parentNode.insertBefore(rulesBtn, ratingBtn);
+    }
+
+    function addRulesPage() {
+        if (document.getElementById('rulesPage')) return;
+
+        const page = document.createElement('div');
+        page.className = 'page';
+        page.id = 'rulesPage';
+
+        page.innerHTML = `
+            <div class="rules-container">
+                <div class="rules-card">
+                    <div class="rules-header">
+                        <h2>📜 Правила турнира</h2>
+                        <button class="btn btn-secondary nav-btn" data-page="timerPage">← Назад к таймеру</button>
+                    </div>
+
+                    <div class="rules-text" id="rulesText">
+                        Загрузка правил...
+                    </div>
+
+                    <div class="rules-muted">
+                        Текст загружается из файла <strong>rules.txt</strong>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertBefore(page, document.querySelector('script'));
+    }
+
+    async function loadRulesText() {
+        const rulesText = document.getElementById('rulesText');
+        if (!rulesText) return;
+
+        rulesText.textContent = 'Загрузка правил...';
+
+        try {
+            const response = await fetch('rules.txt?t=' + Date.now(), {
+                cache: 'no-store'
+            });
+
+            if (!response.ok) {
+                throw new Error('Файл rules.txt не найден');
+            }
+
+            const text = await response.text();
+
+            if (!text.trim()) {
+                rulesText.textContent = 'Файл rules.txt пустой.';
+                return;
+            }
+
+            rulesText.textContent = text;
+        } catch (error) {
+            rulesText.textContent =
+                'Не удалось загрузить правила.\n\n' +
+                'Создай файл rules.txt рядом с index.html и залей его на GitHub.\n\n' +
+                'Ошибка: ' + error.message;
+        }
+    }
+
+    addRulesStyles();
+    addRulesButton();
+    addRulesPage();
+
+    const previousShowPageForRules = window.showPage || showPage;
+
+    if (typeof previousShowPageForRules === 'function') {
+        showPage = function (pageId) {
+            previousShowPageForRules(pageId);
+
+            if (pageId === 'rulesPage') {
+                loadRulesText();
+            }
+        };
+
+        window.showPage = showPage;
+    }
+
+    /********************************************************
+     * 2. ОБЩЕЕ ПРОШЕДШЕЕ ВРЕМЯ С МОМЕНТА СТАРТА
+     ********************************************************/
+
+    function nowMs() {
+        return Date.now();
+    }
+
+    function ensureTournamentStartedAt() {
+        if (!state.timer.tournamentStartedAt) {
+            state.timer.tournamentStartedAt = nowMs();
+        }
+
+        /*
+         * Важно:
+         * startTime используем как общий старт турнира.
+         * targetEndTime всё равно отвечает за текущий уровень.
+         */
+        state.timer.startTime = state.timer.tournamentStartedAt;
+    }
+
+    function clearTournamentStartedAt() {
+        state.timer.tournamentStartedAt = null;
+        state.timer.startTime = null;
+    }
+
+    function getTotalTournamentElapsedSeconds() {
+        const startedAt = state.timer.tournamentStartedAt || state.timer.startTime;
+
+        if (!startedAt) return 0;
+
+        return Math.max(0, Math.floor((nowMs() - Number(startedAt)) / 1000));
+    }
+
+    function formatTotalElapsed() {
+        return formatTime(getTotalTournamentElapsedSeconds());
+    }
+
+    /********************************************************
+     * 3. НОВОЕ СОХРАНЕНИЕ/ЗАГРУЗКА ТАЙМЕРА
+     ********************************************************/
+
+    const previousSaveTimerState = window.saveTimerState || saveTimerState;
+    const previousLoadTimerState = window.loadTimerState || loadTimerState;
+    const previousUpdateTimerDisplay = window.updateTimerDisplay || updateTimerDisplay;
+
+    saveTimerState = function () {
+        /*
+         * Если таймер уже когда-либо запускался,
+         * сохраняем общий старт.
+         */
+        if (
+            state.timer.tournamentStartedAt ||
+            state.timer.isRunning ||
+            state.timer.isPaused
+        ) {
+            if (!state.timer.tournamentStartedAt) {
+                state.timer.tournamentStartedAt = state.timer.startTime || nowMs();
+            }
+
+            state.timer.startTime = state.timer.tournamentStartedAt;
+        }
+
+        if (typeof previousSaveTimerState === 'function') {
+            previousSaveTimerState();
+        }
+
+        /*
+         * Дописываем tournamentStartedAt в localStorage.
+         * Старый Supabase-патч сохраняет startTime,
+         * а здесь дополнительно сохраняем отдельное поле.
+         */
+        try {
+            const saved = localStorage.getItem('pokerTimerState');
+
+            if (saved) {
+                const data = JSON.parse(saved);
+                data.tournamentStartedAt = state.timer.tournamentStartedAt || state.timer.startTime || null;
+                data.startTime = state.timer.tournamentStartedAt || state.timer.startTime || null;
+                localStorage.setItem('pokerTimerState', JSON.stringify(data));
+            }
+        } catch (e) {
+            console.warn('Не удалось дописать tournamentStartedAt:', e);
+        }
+    };
+
+    loadTimerState = function () {
+        let result = false;
+
+        if (typeof previousLoadTimerState === 'function') {
+            result = previousLoadTimerState();
+        }
+
+        try {
+            const saved = localStorage.getItem('pokerTimerState');
+
+            if (saved) {
+                const data = JSON.parse(saved);
+
+                if (data.tournamentStartedAt) {
+                    state.timer.tournamentStartedAt = Number(data.tournamentStartedAt);
+                } else if (data.startTime && (data.isRunning || data.isPaused)) {
+                    state.timer.tournamentStartedAt = Number(data.startTime);
+                }
+
+                if (state.timer.tournamentStartedAt) {
+                    state.timer.startTime = state.timer.tournamentStartedAt;
+                }
+            }
+        } catch (e) {
+            console.warn('Не удалось загрузить tournamentStartedAt:', e);
+        }
+
+        return result;
+    };
+
+    updateTimerDisplay = function () {
+        if (typeof previousUpdateTimerDisplay === 'function') {
+            previousUpdateTimerDisplay();
+        }
+
+        /*
+         * Перезаписываем только карточку "Прошло времени".
+         * Прогресс уровня и elapsedTime под полоской остаются временем уровня.
+         */
+        const statElapsedTime = document.getElementById('statElapsedTime');
+
+        if (statElapsedTime) {
+            statElapsedTime.textContent = formatTotalElapsed();
+        }
+    };
+
+    window.saveTimerState = saveTimerState;
+    window.loadTimerState = loadTimerState;
+    window.updateTimerDisplay = updateTimerDisplay;
+
+    /********************************************************
+     * 4. СВОЯ СТАБИЛЬНАЯ ЛОГИКА УРОВНЕЙ И ПЕРЕРЫВОВ
+     ********************************************************/
+
+    function getCurrentTemplateSafe() {
+        return state.templates[state.currentTemplate];
+    }
+
+    function setCurrentStageDuration(seconds, baseTime) {
+        const base = baseTime || nowMs();
+
+        state.timer.totalLevelTime = Number(seconds);
+        state.timer.timeRemaining = Number(seconds);
+        state.timer.elapsedTime = 0;
+        state.timer.targetEndTime = base + Number(seconds) * 1000;
+
+        /*
+         * Не трогаем общий startTime.
+         */
+        if (state.timer.tournamentStartedAt) {
+            state.timer.startTime = state.timer.tournamentStartedAt;
+        }
+    }
+
+    function isBigBreakAfterCurrentLevel() {
+        const template = getCurrentTemplateSafe();
+
+        if (!template) return false;
+        if (state.timer.isBreak) return false;
+
+        return (
+            Number(template.bigBreakAfterLevel || 0) > 0 &&
+            Number(state.timer.currentLevel) === Number(template.bigBreakAfterLevel)
+        );
+    }
+
+    function isRegularBreakAfterCurrentLevel() {
+        const template = getCurrentTemplateSafe();
+
+        if (!template) return false;
+        if (state.timer.isBreak) return false;
+
+        if (!template.breakDuration || Number(template.breakDuration) <= 0) return false;
+        if (!template.breakEveryNLevels || Number(template.breakEveryNLevels) <= 0) return false;
+
+        /*
+         * Если должен быть большой перерыв,
+         * обычный перерыв не ставим.
+         */
+        if (isBigBreakAfterCurrentLevel()) return false;
+
+        return Number(state.timer.currentLevel) % Number(template.breakEveryNLevels) === 0;
+    }
+
+    function finishTimerCompletely() {
+        state.timer.tournamentEnded = true;
+        state.timer.isRunning = false;
+        state.timer.isPaused = false;
+        state.timer.isBreak = false;
+        state.timer.breakType = null;
+        state.timer.targetEndTime = null;
+
+        clearInterval(state.timer.interval);
+
+        saveTimerState();
+        updateTimerDisplay();
+    }
+
+    function moveToNextStageStable(baseTime) {
+        const template = getCurrentTemplateSafe();
+
+        if (!template || !Array.isArray(template.levels) || template.levels.length === 0) {
+            return;
+        }
+
+        const totalLevels = template.levels.length;
+        const base = baseTime || nowMs();
+
+        /*
+         * Если закончился перерыв —
+         * начинаем следующий уровень.
+         */
+        if (state.timer.isBreak) {
+            const nextLevel = Number(state.timer.currentLevel) + 1;
+
+            if (nextLevel > totalLevels) {
+                finishTimerCompletely();
+                return;
+            }
+
+            state.timer.currentLevel = nextLevel;
+            state.timer.isBreak = false;
+            state.timer.breakType = null;
+
+            setCurrentStageDuration(Number(template.levelDuration) * 60, base);
+            return;
+        }
+
+        /*
+         * Если закончился последний уровень.
+         */
+        if (Number(state.timer.currentLevel) >= totalLevels) {
+            finishTimerCompletely();
+            return;
+        }
+
+        /*
+         * Большой перерыв после текущего уровня.
+         */
+        if (isBigBreakAfterCurrentLevel()) {
+            state.timer.isBreak = true;
+            state.timer.breakType = 'big';
+
+            setCurrentStageDuration(Number(template.bigBreakDuration) * 60, base);
+            return;
+        }
+
+        /*
+         * Обычный перерыв после текущего уровня.
+         */
+        if (isRegularBreakAfterCurrentLevel()) {
+            state.timer.isBreak = true;
+            state.timer.breakType = 'regular';
+
+            setCurrentStageDuration(Number(template.breakDuration) * 60, base);
+            return;
+        }
+
+        /*
+         * Следующий обычный уровень.
+         */
+        state.timer.currentLevel = Number(state.timer.currentLevel) + 1;
+        state.timer.isBreak = false;
+        state.timer.breakType = null;
+
+        setCurrentStageDuration(Number(template.levelDuration) * 60, base);
+    }
+
+    function playStageEndSoundStable() {
+        try {
+            if (state.timer.isBreak) {
+                if (state.timer.breakType === 'big') {
+                    playSound('bigBreakEnd');
+                } else {
+                    playSound('breakEnd');
+                }
+            } else {
+                playSound('levelEnd');
+            }
+        } catch (e) {
+            console.warn('Ошибка звука:', e);
+        }
+    }
+
+    function syncTimerStable(silent) {
+        if (!state.timer.isRunning) return;
+        if (state.timer.tournamentEnded) return;
+        if (!state.timer.targetEndTime) return;
+
+        const currentNow = nowMs();
+
+        /*
+         * Если сайт был закрыт или вкладка спала,
+         * перескакиваем через все завершённые уровни/перерывы.
+         */
+        while (
+            state.timer.isRunning &&
+            !state.timer.tournamentEnded &&
+            state.timer.targetEndTime &&
+            currentNow >= state.timer.targetEndTime
+        ) {
+            const endedAt = state.timer.targetEndTime;
+
+            if (!silent) {
+                playStageEndSoundStable();
+            }
+
+            moveToNextStageStable(endedAt);
+        }
+
+        if (
+            state.timer.isRunning &&
+            !state.timer.tournamentEnded &&
+            state.timer.targetEndTime
+        ) {
+            const remainingMs = Math.max(0, Number(state.timer.targetEndTime) - nowMs());
+
+            state.timer.timeRemaining = Math.ceil(remainingMs / 1000);
+            state.timer.elapsedTime = Math.max(
+                0,
+                Number(state.timer.totalLevelTime) - Number(state.timer.timeRemaining)
+            );
+        }
+
+        saveTimerState();
+        updateTimerDisplay();
+    }
+
+    function startStableInterval() {
+        clearInterval(state.timer.interval);
+
+        state.timer.interval = setInterval(() => {
+            syncTimerStable(false);
+        }, 500);
+    }
+
+    /********************************************************
+     * 5. ПЕРЕОПРЕДЕЛЯЕМ КНОПКИ ТАЙМЕРА
+     ********************************************************/
+
+    startTimer = function () {
+        if (state.timer.isRunning || state.timer.tournamentEnded) return;
+
+        const template = getCurrentTemplateSafe();
+
+        if (!template) return;
+
+        ensureTournamentStartedAt();
+
+        if (!state.timer.timeRemaining || Number(state.timer.timeRemaining) <= 0) {
+            state.timer.totalLevelTime = Number(template.levelDuration) * 60;
+            state.timer.timeRemaining = state.timer.totalLevelTime;
+            state.timer.elapsedTime = 0;
+        }
+
+        state.timer.isRunning = true;
+        state.timer.isPaused = false;
+        state.timer.targetEndTime = nowMs() + Number(state.timer.timeRemaining) * 1000;
+
+        const status = document.getElementById('timerStatus');
+        if (status) {
+            status.textContent = state.timer.isBreak ? 'Перерыв' : 'Идёт игра';
+        }
+
+        startStableInterval();
+
+        saveTimerState();
+        updateTimerDisplay();
+    };
+
+    pauseTimer = function () {
+        if (!state.timer.isRunning) return;
+
+        syncTimerStable(true);
+
+        state.timer.isRunning = false;
+        state.timer.isPaused = true;
+        state.timer.targetEndTime = null;
+
+        clearInterval(state.timer.interval);
+
+        const status = document.getElementById('timerStatus');
+        if (status) status.textContent = 'Пауза';
+
+        saveTimerState();
+        updateTimerDisplay();
+    };
+
+    resetTimer = function () {
+        const template = getCurrentTemplateSafe();
+
+        if (!template) return;
+
+        state.timer.currentLevel = 1;
+        state.timer.isRunning = false;
+        state.timer.isPaused = false;
+        state.timer.isBreak = false;
+        state.timer.breakType = null;
+        state.timer.tournamentEnded = false;
+
+        state.timer.totalLevelTime = Number(template.levelDuration) * 60;
+        state.timer.timeRemaining = state.timer.totalLevelTime;
+        state.timer.elapsedTime = 0;
+        state.timer.targetEndTime = null;
+
+        clearTournamentStartedAt();
+
+        clearInterval(state.timer.interval);
+
+        const status = document.getElementById('timerStatus');
+        if (status) status.textContent = 'Готов';
+
+        saveTimerState();
+        updateTimerDisplay();
+    };
+
+    nextLevel = function () {
+        const wasRunning = !!state.timer.isRunning;
+
+        if (!state.timer.tournamentStartedAt && wasRunning) {
+            ensureTournamentStartedAt();
+        }
+
+        moveToNextStageStable(nowMs());
+
+        if (!state.timer.tournamentEnded) {
+            if (wasRunning) {
+                state.timer.isRunning = true;
+                state.timer.isPaused = false;
+                state.timer.targetEndTime = nowMs() + Number(state.timer.timeRemaining) * 1000;
+                startStableInterval();
+            } else {
+                state.timer.isRunning = false;
+                state.timer.isPaused = false;
+                state.timer.targetEndTime = null;
+                clearInterval(state.timer.interval);
+            }
+        }
+
+        saveTimerState();
+        updateTimerDisplay();
+    };
+
+    prevLevel = function () {
+        const template = getCurrentTemplateSafe();
+
+        if (!template) return;
+
+        if (Number(state.timer.currentLevel) <= 1 && !state.timer.isBreak) {
+            alert('Это первый уровень, назад перемотать нельзя');
+            return;
+        }
+
+        /*
+         * При нажатии назад останавливаем таймер,
+         * чтобы не было скачков.
+         */
+        state.timer.isRunning = false;
+        state.timer.isPaused = false;
+        state.timer.tournamentEnded = false;
+
+        if (state.timer.isBreak) {
+            state.timer.isBreak = false;
+            state.timer.breakType = null;
+        } else {
+            state.timer.currentLevel = Math.max(1, Number(state.timer.currentLevel) - 1);
+            state.timer.isBreak = false;
+            state.timer.breakType = null;
+        }
+
+        state.timer.totalLevelTime = Number(template.levelDuration) * 60;
+        state.timer.timeRemaining = state.timer.totalLevelTime;
+        state.timer.elapsedTime = 0;
+        state.timer.targetEndTime = null;
+
+        clearInterval(state.timer.interval);
+
+        const status = document.getElementById('timerStatus');
+        if (status) status.textContent = 'Готов';
+
+        saveTimerState();
+        updateTimerDisplay();
+    };
+
+    window.startTimer = startTimer;
+    window.pauseTimer = pauseTimer;
+    window.resetTimer = resetTimer;
+    window.nextLevel = nextLevel;
+    window.prevLevel = prevLevel;
+
+    /********************************************************
+     * 6. ЗАНОВО ПРИВЯЗЫВАЕМ КНОПКИ, ЧТОБЫ УБРАТЬ СТАРЫЕ
+     *    ДВОЙНЫЕ ОБРАБОТЧИКИ
+     ********************************************************/
+
+    function rebindButton(id, handler) {
+        const oldButton = document.getElementById(id);
+        if (!oldButton) return;
+
+        const newButton = oldButton.cloneNode(true);
+        oldButton.parentNode.replaceChild(newButton, oldButton);
+        newButton.addEventListener('click', handler);
+    }
+
+    rebindButton('startBtn', startTimer);
+    rebindButton('pauseBtn', pauseTimer);
+    rebindButton('resetBtn', resetTimer);
+    rebindButton('backBtn', prevLevel);
+    rebindButton('forwardBtn', nextLevel);
+
+    /********************************************************
+     * 7. ИСПРАВЛЯЕМ ПЕРЕМОТКУ ПОЛОСКОЙ
+     ********************************************************/
+
+    function rebindProgressBar() {
+        const oldProgress = document.getElementById('progressContainer');
+        if (!oldProgress) return;
+
+        const newProgress = oldProgress.cloneNode(true);
+        oldProgress.parentNode.replaceChild(newProgress, oldProgress);
+
+        newProgress.addEventListener('click', function (event) {
+            if (state.timer.tournamentEnded) return;
+            if (!state.timer.totalLevelTime || Number(state.timer.totalLevelTime) <= 0) return;
+
+            const rect = newProgress.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const percent = Math.max(0, Math.min(1, x / rect.width));
+
+            const newElapsed = Math.round(Number(state.timer.totalLevelTime) * percent);
+            const newRemaining = Math.max(0, Number(state.timer.totalLevelTime) - newElapsed);
+
+            state.timer.elapsedTime = newElapsed;
+            state.timer.timeRemaining = newRemaining;
+
+            if (state.timer.isRunning) {
+                state.timer.targetEndTime = nowMs() + newRemaining * 1000;
+                startStableInterval();
+            } else {
+                state.timer.targetEndTime = null;
+            }
+
+            saveTimerState();
+            updateTimerDisplay();
+        });
+    }
+
+    rebindProgressBar();
+
+    /********************************************************
+     * 8. ПЕРЕЗАПУСК ТАЙМЕРА ПО НОВОЙ ЛОГИКЕ
+     ********************************************************/
+
+    clearInterval(state.timer.interval);
+
+    loadTimerState();
+
+    if (state.timer.isRunning) {
+        if (!state.timer.tournamentStartedAt && state.timer.startTime) {
+            state.timer.tournamentStartedAt = Number(state.timer.startTime);
+        }
+
+        syncTimerStable(true);
+        startStableInterval();
+    }
+
+    updateTimerDisplay();
+
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden && state.timer.isRunning) {
+            syncTimerStable(true);
+            startStableInterval();
+        }
+    });
+
+})();
     </script>
 </body>
 </html>
