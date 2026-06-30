@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Poker Timer</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --primary-color: #00bfff;
@@ -3406,6 +3407,7 @@
         window.deleteTemplate = deleteTemplate;
         window.renderTemplatesList = renderTemplatesList;
 
+
         loadAdminState();
         loadGridData();
         loadTimerState();
@@ -3455,6 +3457,819 @@
                 }
             };
         }
+
+	/************************************************************
+	 * SUPABASE PATCH ДЛЯ ТВОЕГО POKER TIMER
+	 ************************************************************/
+	(function () {
+    const SUPABASE_URL = 'https://ivvzrjnutuyoqtlzpbqx.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_yazZ-oVnnAzq4zci1mlRZQ_7XxA2Np-';
+
+    let supabaseClient = null;
+    let applyingCloudUpdate = false;
+    let cloudReady = false;
+
+    function supabaseConfigured() {
+        return (
+            SUPABASE_URL &&
+            SUPABASE_ANON_KEY &&
+            !SUPABASE_URL.includes('ВСТАВЬ_СЮДА') &&
+            !SUPABASE_ANON_KEY.includes('ВСТАВЬ_СЮДА')
+        );
+    }
+
+    function loadSupabaseScript() {
+        return new Promise((resolve, reject) => {
+            if (window.supabase) {
+                resolve();
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+    }
+
+    function getTemplate() {
+        return state.templates[state.currentTemplate];
+    }
+
+    function makeGridData() {
+        return {
+            players: state.grid.players,
+            tables: state.grid.tables,
+            maxPlayersPerTable: state.grid.maxPlayersPerTable,
+            gridCreated: state.grid.gridCreated,
+            eliminationOrder: state.grid.eliminationOrder,
+            tournamentEnded: state.grid.tournamentEnded
+        };
+    }
+
+    function makeTimerData() {
+        return {
+            currentLevel: state.timer.currentLevel,
+            timeRemaining: state.timer.timeRemaining,
+            isRunning: state.timer.isRunning,
+            isPaused: state.timer.isPaused,
+            elapsedTime: state.timer.elapsedTime,
+            totalLevelTime: state.timer.totalLevelTime,
+            isBreak: state.timer.isBreak,
+            breakType: state.timer.breakType || null,
+            tournamentEnded: state.timer.tournamentEnded,
+            startTime: state.timer.startTime,
+            targetEndTime: state.timer.targetEndTime,
+            timestamp: Date.now(),
+            currentTemplate: state.currentTemplate,
+            templates: state.templates
+        };
+    }
+
+    function makeSettingsData() {
+        return {
+            prizePlaces: state.settings.prizePlaces,
+            totalPoints: state.settings.totalPoints,
+            primaryColor: state.settings.primaryColor,
+            volume: state.settings.volume
+        };
+    }
+
+    async function cloudSet(key, value) {
+        if (!supabaseClient) return;
+        if (!cloudReady) return;
+        if (applyingCloudUpdate) return;
+
+        /*
+         * В облако пишет только браузер, где выполнен вход админа.
+         * Гости только читают данные.
+         */
+        if (!state.isAdmin) return;
+
+        try {
+            const { error } = await supabaseClient
+                .from('app_state')
+                .upsert({
+                    key: key,
+                    value: value,
+                    updated_at: new Date().toISOString()
+                });
+
+            if (error) {
+                console.error('Ошибка записи в Supabase:', error);
+            }
+        } catch (e) {
+            console.error('cloudSet error:', e);
+        }
+    }
+
+    async function cloudLoadInitial() {
+        if (!supabaseClient) return;
+
+        try {
+            const { data, error } = await supabaseClient
+                .from('app_state')
+                .select('key,value,updated_at')
+                .in('key', ['timer', 'grid', 'settings']);
+
+            if (error) {
+                console.error('Ошибка чтения Supabase:', error);
+                return;
+            }
+
+            if (Array.isArray(data)) {
+                applyingCloudUpdate = true;
+
+                data.forEach(row => {
+                    applyCloudRow(row);
+                });
+
+                applyingCloudUpdate = false;
+            }
+
+            cloudReady = true;
+
+            /*
+             * Если админ открыл сайт, а в Supabase ещё пусто —
+             * отправляем текущее состояние.
+             */
+            if (state.isAdmin) {
+                cloudSet('timer', makeTimerData());
+                cloudSet('grid', makeGridData());
+                cloudSet('settings', makeSettingsData());
+            }
+        } catch (e) {
+            applyingCloudUpdate = false;
+            console.error('cloudLoadInitial error:', e);
+        }
+    }
+
+    function cloudSubscribe() {
+        if (!supabaseClient) return;
+
+        supabaseClient
+            .channel('poker_timer_realtime')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'app_state'
+                },
+                payload => {
+                    if (!payload || !payload.new) return;
+
+                    applyingCloudUpdate = true;
+                    applyCloudRow(payload.new);
+                    applyingCloudUpdate = false;
+                }
+            )
+            .subscribe();
+    }
+
+    function applyCloudRow(row) {
+        if (!row || !row.key) return;
+
+        if (row.key === 'grid') {
+            const data = row.value || {};
+
+            state.grid.players = data.players || [];
+            state.grid.tables = data.tables || [];
+            state.grid.maxPlayersPerTable = data.maxPlayersPerTable || 6;
+            state.grid.gridCreated = !!data.gridCreated;
+            state.grid.eliminationOrder = data.eliminationOrder || [];
+            state.grid.tournamentEnded = !!data.tournamentEnded;
+
+            localStorage.setItem('pokerGridData', JSON.stringify(data));
+
+            if (typeof renderPlayerList === 'function') renderPlayerList();
+            if (typeof renderTables === 'function') renderTables();
+            if (typeof renderRating === 'function') renderRating();
+        }
+
+        if (row.key === 'timer') {
+            const data = row.value || {};
+
+            applyTimerData(data);
+
+            localStorage.setItem('pokerTimerState', JSON.stringify(makeTimerData()));
+
+            if (typeof updateTimerDisplay === 'function') updateTimerDisplay();
+
+            if (state.timer.isRunning) {
+                patchedSyncTimer(true);
+                patchedStartInterval();
+            } else {
+                clearInterval(state.timer.interval);
+            }
+        }
+
+        if (row.key === 'settings') {
+            const data = row.value || {};
+
+            if (data.prizePlaces) state.settings.prizePlaces = data.prizePlaces;
+            if (data.totalPoints) state.settings.totalPoints = data.totalPoints;
+            if (typeof data.volume !== 'undefined') state.settings.volume = data.volume;
+
+            if (data.primaryColor) {
+                state.settings.primaryColor = data.primaryColor;
+                document.documentElement.style.setProperty('--primary-color', data.primaryColor);
+
+                const colorPicker = document.getElementById('primaryColorPicker');
+                const colorText = document.getElementById('primaryColorText');
+
+                if (colorPicker) colorPicker.value = data.primaryColor;
+                if (colorText) colorText.value = data.primaryColor;
+            }
+
+            if (typeof renderRating === 'function') renderRating();
+        }
+    }
+
+    function applyTimerData(data) {
+        if (!data) return;
+
+        if (data.templates) {
+            state.templates = data.templates;
+        }
+
+        if (data.currentTemplate && state.templates[data.currentTemplate]) {
+            state.currentTemplate = data.currentTemplate;
+        }
+
+        state.timer.currentLevel = Number(data.currentLevel || 1);
+        state.timer.timeRemaining = Number(data.timeRemaining || 0);
+        state.timer.isRunning = !!data.isRunning;
+        state.timer.isPaused = !!data.isPaused;
+        state.timer.elapsedTime = Number(data.elapsedTime || 0);
+        state.timer.totalLevelTime = Number(data.totalLevelTime || 0);
+        state.timer.isBreak = !!data.isBreak;
+        state.timer.breakType = data.breakType || null;
+        state.timer.tournamentEnded = !!data.tournamentEnded;
+        state.timer.startTime = data.startTime || null;
+        state.timer.targetEndTime = data.targetEndTime || null;
+
+        if (state.timer.isRunning) {
+            patchedSyncTimer(true);
+        }
+    }
+
+    function shouldBigBreakAfterCurrentLevel() {
+        const template = getTemplate();
+        if (!template) return false;
+
+        return (
+            !state.timer.isBreak &&
+            template.bigBreakAfterLevel > 0 &&
+            state.timer.currentLevel === template.bigBreakAfterLevel
+        );
+    }
+
+    function shouldRegularBreakAfterCurrentLevel() {
+        const template = getTemplate();
+        if (!template) return false;
+
+        if (!template.breakDuration || template.breakDuration <= 0) return false;
+        if (!template.breakEveryNLevels || template.breakEveryNLevels <= 0) return false;
+
+        if (shouldBigBreakAfterCurrentLevel()) return false;
+
+        return state.timer.currentLevel % template.breakEveryNLevels === 0;
+    }
+
+    function setStageDuration(seconds, baseTime) {
+        const now = baseTime || Date.now();
+
+        state.timer.totalLevelTime = seconds;
+        state.timer.timeRemaining = seconds;
+        state.timer.elapsedTime = 0;
+        state.timer.startTime = now;
+        state.timer.targetEndTime = now + seconds * 1000;
+    }
+
+    function finishTimerTournament() {
+        state.timer.tournamentEnded = true;
+        state.timer.isRunning = false;
+        state.timer.isPaused = false;
+        state.timer.isBreak = false;
+        state.timer.breakType = null;
+        state.timer.targetEndTime = null;
+
+        clearInterval(state.timer.interval);
+
+        if (typeof updateTimerDisplay === 'function') updateTimerDisplay();
+
+        saveTimerState();
+    }
+
+    function patchedMoveNextStage(baseTime) {
+        const template = getTemplate();
+        if (!template || !template.levels || template.levels.length === 0) return;
+
+        const totalLevels = template.levels.length;
+        const now = baseTime || Date.now();
+
+        /*
+         * Если закончился перерыв —
+         * переходим к следующему уровню.
+         */
+        if (state.timer.isBreak) {
+            const nextLevel = state.timer.currentLevel + 1;
+
+            if (nextLevel > totalLevels) {
+                finishTimerTournament();
+                return;
+            }
+
+            state.timer.currentLevel = nextLevel;
+            state.timer.isBreak = false;
+            state.timer.breakType = null;
+
+            setStageDuration(template.levelDuration * 60, now);
+            return;
+        }
+
+        /*
+         * Если закончился последний уровень —
+         * завершаем таймер.
+         */
+        if (state.timer.currentLevel >= totalLevels) {
+            finishTimerTournament();
+            return;
+        }
+
+        /*
+         * Большой перерыв после текущего уровня.
+         */
+        if (shouldBigBreakAfterCurrentLevel()) {
+            state.timer.isBreak = true;
+            state.timer.breakType = 'big';
+            setStageDuration(template.bigBreakDuration * 60, now);
+            return;
+        }
+
+        /*
+         * Обычный перерыв после текущего уровня.
+         */
+        if (shouldRegularBreakAfterCurrentLevel()) {
+            state.timer.isBreak = true;
+            state.timer.breakType = 'regular';
+            setStageDuration(template.breakDuration * 60, now);
+            return;
+        }
+
+        /*
+         * Обычный следующий уровень.
+         */
+        state.timer.currentLevel++;
+        state.timer.isBreak = false;
+        state.timer.breakType = null;
+
+        setStageDuration(template.levelDuration * 60, now);
+    }
+
+    function patchedPlayStageEndSound() {
+        try {
+            if (state.timer.isBreak) {
+                if (state.timer.breakType === 'big') {
+                    playSound('bigBreakEnd');
+                } else {
+                    playSound('breakEnd');
+                }
+            } else {
+                playSound('levelEnd');
+            }
+        } catch (e) {
+            console.warn('Не удалось воспроизвести звук:', e);
+        }
+    }
+
+    function patchedSyncTimer(silent) {
+        if (!state.timer.isRunning) return;
+        if (state.timer.tournamentEnded) return;
+        if (!state.timer.targetEndTime) return;
+
+        const now = Date.now();
+
+        /*
+         * Если сайт был закрыт, а потом открыт —
+         * прокручиваем все уровни и перерывы,
+         * которые должны были закончиться.
+         */
+        while (
+            state.timer.isRunning &&
+            !state.timer.tournamentEnded &&
+            state.timer.targetEndTime &&
+            now >= state.timer.targetEndTime
+        ) {
+            const endedAt = state.timer.targetEndTime;
+
+            if (!silent) {
+                patchedPlayStageEndSound();
+            }
+
+            patchedMoveNextStage(endedAt);
+        }
+
+        if (
+            state.timer.isRunning &&
+            !state.timer.tournamentEnded &&
+            state.timer.targetEndTime
+        ) {
+            const remainingMs = Math.max(0, state.timer.targetEndTime - Date.now());
+
+            state.timer.timeRemaining = Math.ceil(remainingMs / 1000);
+            state.timer.elapsedTime = Math.max(
+                0,
+                state.timer.totalLevelTime - state.timer.timeRemaining
+            );
+        }
+
+        if (typeof updateTimerDisplay === 'function') updateTimerDisplay();
+
+        saveTimerState();
+    }
+
+    function patchedStartInterval() {
+        clearInterval(state.timer.interval);
+
+        state.timer.interval = setInterval(() => {
+            patchedSyncTimer(false);
+        }, 500);
+    }
+
+    /*
+     * Переопределяем сохранение таймера.
+     */
+    saveTimerState = function () {
+        const timerData = makeTimerData();
+
+        localStorage.setItem('pokerTimerState', JSON.stringify(timerData));
+
+        if (typeof broadcastUpdate === 'function') {
+            broadcastUpdate('timerUpdate', timerData);
+        }
+
+        cloudSet('timer', timerData);
+    };
+
+    /*
+     * Переопределяем загрузку таймера.
+     */
+    loadTimerState = function () {
+        const saved = localStorage.getItem('pokerTimerState');
+
+        if (!saved) {
+            const template = getTemplate();
+
+            if (template) {
+                state.timer.currentLevel = 1;
+                state.timer.totalLevelTime = template.levelDuration * 60;
+                state.timer.timeRemaining = state.timer.totalLevelTime;
+                state.timer.elapsedTime = 0;
+                state.timer.isRunning = false;
+                state.timer.isPaused = false;
+                state.timer.isBreak = false;
+                state.timer.breakType = null;
+                state.timer.tournamentEnded = false;
+                state.timer.startTime = null;
+                state.timer.targetEndTime = null;
+            }
+
+            return false;
+        }
+
+        try {
+            const data = JSON.parse(saved);
+            applyTimerData(data);
+            return true;
+        } catch (e) {
+            console.error('Ошибка загрузки таймера:', e);
+            return false;
+        }
+    };
+
+    /*
+     * Переопределяем сохранение сетки.
+     */
+    saveGridData = function () {
+        const gridData = makeGridData();
+
+        localStorage.setItem('pokerGridData', JSON.stringify(gridData));
+
+        if (typeof broadcastUpdate === 'function') {
+            broadcastUpdate('gridUpdate', gridData);
+        }
+
+        cloudSet('grid', gridData);
+    };
+
+    clearGridData = function () {
+        const emptyGrid = {
+            players: [],
+            tables: [],
+            maxPlayersPerTable: 6,
+            gridCreated: false,
+            eliminationOrder: [],
+            tournamentEnded: false
+        };
+
+        localStorage.removeItem('pokerGridData');
+
+        if (typeof broadcastUpdate === 'function') {
+            broadcastUpdate('gridClear', null);
+        }
+
+        cloudSet('grid', emptyGrid);
+    };
+
+    /*
+     * Переопределяем кнопки таймера.
+     */
+    startTimer = function () {
+        if (state.timer.isRunning || state.timer.tournamentEnded) return;
+
+        state.timer.isRunning = true;
+        state.timer.isPaused = false;
+
+        if (!state.timer.timeRemaining || state.timer.timeRemaining <= 0) {
+            const template = getTemplate();
+            state.timer.totalLevelTime = template.levelDuration * 60;
+            state.timer.timeRemaining = state.timer.totalLevelTime;
+        }
+
+        state.timer.startTime = Date.now();
+        state.timer.targetEndTime = Date.now() + state.timer.timeRemaining * 1000;
+
+        const status = document.getElementById('timerStatus');
+        if (status) status.textContent = state.timer.isBreak ? 'Перерыв' : 'Идёт игра';
+
+        patchedStartInterval();
+        saveTimerState();
+
+        if (typeof updateTimerDisplay === 'function') updateTimerDisplay();
+    };
+
+    pauseTimer = function () {
+        if (!state.timer.isRunning) return;
+
+        patchedSyncTimer(true);
+
+        state.timer.isRunning = false;
+        state.timer.isPaused = true;
+        state.timer.targetEndTime = null;
+
+        clearInterval(state.timer.interval);
+
+        const status = document.getElementById('timerStatus');
+        if (status) status.textContent = 'Пауза';
+
+        saveTimerState();
+
+        if (typeof updateTimerDisplay === 'function') updateTimerDisplay();
+    };
+
+    resetTimer = function () {
+        const template = getTemplate();
+
+        state.timer.currentLevel = 1;
+        state.timer.isRunning = false;
+        state.timer.isPaused = false;
+        state.timer.isBreak = false;
+        state.timer.breakType = null;
+        state.timer.tournamentEnded = false;
+
+        state.timer.totalLevelTime = template.levelDuration * 60;
+        state.timer.timeRemaining = state.timer.totalLevelTime;
+        state.timer.elapsedTime = 0;
+
+        state.timer.startTime = null;
+        state.timer.targetEndTime = null;
+
+        clearInterval(state.timer.interval);
+
+        const status = document.getElementById('timerStatus');
+        if (status) status.textContent = 'Готов';
+
+        saveTimerState();
+
+        if (typeof updateTimerDisplay === 'function') updateTimerDisplay();
+    };
+
+    nextLevel = function () {
+        const wasRunning = state.timer.isRunning;
+
+        patchedMoveNextStage(Date.now());
+
+        if (!state.timer.tournamentEnded) {
+            if (wasRunning) {
+                state.timer.isRunning = true;
+                state.timer.isPaused = false;
+                patchedStartInterval();
+            } else {
+                state.timer.isRunning = false;
+                state.timer.isPaused = false;
+                state.timer.targetEndTime = null;
+                clearInterval(state.timer.interval);
+            }
+        }
+
+        saveTimerState();
+
+        if (typeof updateTimerDisplay === 'function') updateTimerDisplay();
+    };
+
+    prevLevel = function () {
+        const template = getTemplate();
+
+        if (state.timer.currentLevel <= 1 && !state.timer.isBreak) {
+            alert('Это первый уровень, назад перемотать нельзя');
+            return;
+        }
+
+        if (state.timer.isBreak) {
+            state.timer.isBreak = false;
+            state.timer.breakType = null;
+        } else {
+            state.timer.currentLevel--;
+        }
+
+        state.timer.isRunning = false;
+        state.timer.isPaused = false;
+        state.timer.tournamentEnded = false;
+
+        state.timer.totalLevelTime = template.levelDuration * 60;
+        state.timer.timeRemaining = state.timer.totalLevelTime;
+        state.timer.elapsedTime = 0;
+
+        state.timer.startTime = null;
+        state.timer.targetEndTime = null;
+
+        clearInterval(state.timer.interval);
+
+        saveTimerState();
+
+        if (typeof updateTimerDisplay === 'function') updateTimerDisplay();
+    };
+
+    applyTemplateToTimer = function () {
+        const template = getTemplate();
+        if (!template) return;
+
+        state.timer.currentLevel = 1;
+        state.timer.isRunning = false;
+        state.timer.isPaused = false;
+        state.timer.isBreak = false;
+        state.timer.breakType = null;
+        state.timer.tournamentEnded = false;
+
+        state.timer.totalLevelTime = template.levelDuration * 60;
+        state.timer.timeRemaining = state.timer.totalLevelTime;
+        state.timer.elapsedTime = 0;
+
+        state.timer.startTime = null;
+        state.timer.targetEndTime = null;
+
+        clearInterval(state.timer.interval);
+
+        const templateName = document.getElementById('currentTemplate');
+        if (templateName) templateName.textContent = state.currentTemplate;
+
+        saveTimerState();
+
+        if (typeof updateTimerDisplay === 'function') updateTimerDisplay();
+    };
+
+    /*
+     * Убираем старые обработчики кнопок таймера и ставим новые.
+     */
+    function rebindButton(id, handler) {
+        const oldBtn = document.getElementById(id);
+        if (!oldBtn) return;
+
+        const newBtn = oldBtn.cloneNode(true);
+        oldBtn.parentNode.replaceChild(newBtn, oldBtn);
+        newBtn.addEventListener('click', handler);
+    }
+
+    rebindButton('startBtn', startTimer);
+    rebindButton('pauseBtn', pauseTimer);
+    rebindButton('resetBtn', resetTimer);
+    rebindButton('backBtn', prevLevel);
+    rebindButton('forwardBtn', nextLevel);
+
+    /*
+     * Пароль по умолчанию.
+     * В твоём окне написано secret, поэтому делаем secret.
+     */
+    const savedPassword = localStorage.getItem('pokerTimerPassword');
+    if (!savedPassword) {
+        state.settings.adminPassword = 'secret';
+    }
+
+    /*
+     * Дополнительная синхронизация настроек очков.
+     */
+    const savePointsBtn = document.getElementById('savePointsConfigBtn');
+    if (savePointsBtn) {
+        savePointsBtn.addEventListener('click', () => {
+            setTimeout(() => {
+                cloudSet('settings', makeSettingsData());
+            }, 300);
+        });
+    }
+
+    const colorPicker = document.getElementById('primaryColorPicker');
+    if (colorPicker) {
+        colorPicker.addEventListener('change', () => {
+            state.settings.primaryColor = colorPicker.value;
+            cloudSet('settings', makeSettingsData());
+        });
+    }
+
+    const colorText = document.getElementById('primaryColorText');
+    if (colorText) {
+        colorText.addEventListener('change', () => {
+            state.settings.primaryColor = colorText.value;
+            cloudSet('settings', makeSettingsData());
+        });
+    }
+
+    const volumeSlider = document.getElementById('volumeSlider');
+    if (volumeSlider) {
+        volumeSlider.addEventListener('change', () => {
+            state.settings.volume = volumeSlider.value;
+            cloudSet('settings', makeSettingsData());
+        });
+    }
+
+    /*
+     * Если вкладка была скрыта, а потом открыта —
+     * пересчитываем таймер.
+     */
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && state.timer.isRunning) {
+            patchedSyncTimer(true);
+            patchedStartInterval();
+        }
+    });
+
+    /*
+     * Перезапускаем таймер уже по новой правильной логике.
+     */
+    clearInterval(state.timer.interval);
+    loadTimerState();
+
+    if (state.timer.isRunning) {
+        patchedSyncTimer(true);
+        patchedStartInterval();
+    }
+
+    if (typeof updateTimerDisplay === 'function') updateTimerDisplay();
+
+    /*
+     * Запуск Supabase.
+     */
+    async function initSupabase() {
+        if (!supabaseConfigured()) {
+            console.warn('Supabase пока не настроен. Вставь SUPABASE_URL и SUPABASE_ANON_KEY.');
+            return;
+        }
+
+        try {
+            await loadSupabaseScript();
+
+            supabaseClient = window.supabase.createClient(
+                SUPABASE_URL,
+                SUPABASE_ANON_KEY
+            );
+
+            await cloudLoadInitial();
+            cloudSubscribe();
+
+            console.log('Supabase подключён успешно.');
+        } catch (e) {
+            console.error('Ошибка подключения Supabase:', e);
+        }
+    }
+
+    initSupabase();
+
+    /*
+     * Делаем функции видимыми для onclick.
+     */
+    window.startTimer = startTimer;
+    window.pauseTimer = pauseTimer;
+    window.resetTimer = resetTimer;
+    window.nextLevel = nextLevel;
+    window.prevLevel = prevLevel;
+    window.saveTimerState = saveTimerState;
+    window.loadTimerState = loadTimerState;
+    window.saveGridData = saveGridData;
+    window.clearGridData = clearGridData;
+    window.applyTemplateToTimer = applyTemplateToTimer;
+})();
     </script>
 </body>
 </html>
