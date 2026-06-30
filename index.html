@@ -5631,6 +5631,56 @@
     });
 
 })();
+		/************************************************************
+ * PATCH: скрыть полосу перемотки таймера у гостя
+ ************************************************************/
+(function () {
+
+    function updateProgressVisibilityForGuest() {
+        const progressContainer = document.getElementById('progressContainer');
+
+        if (!progressContainer) return;
+
+        if (state.isAdmin) {
+            progressContainer.style.display = '';
+        } else {
+            progressContainer.style.display = 'none';
+        }
+    }
+
+    const previousUpdateAdminUI = window.updateAdminUI || updateAdminUI;
+
+    updateAdminUI = function () {
+        if (typeof previousUpdateAdminUI === 'function') {
+            previousUpdateAdminUI();
+        }
+
+        updateProgressVisibilityForGuest();
+    };
+
+    window.updateAdminUI = updateAdminUI;
+
+    /*
+     * На случай если роль уже загружена до этого патча.
+     */
+    updateProgressVisibilityForGuest();
+
+    /*
+     * На случай переключения страниц.
+     */
+    const previousShowPage = window.showPage || showPage;
+
+    if (typeof previousShowPage === 'function') {
+        showPage = function (pageId) {
+            previousShowPage(pageId);
+
+            setTimeout(updateProgressVisibilityForGuest, 50);
+        };
+
+        window.showPage = showPage;
+    }
+
+})();
     </script>
 </body>
 </html>
