@@ -4541,6 +4541,351 @@
     window.renderTables = renderTables;
 
 })();
+ /************************************************************
+ * PATCH: сохранение и загрузка списка игроков из файла
+ ************************************************************/
+ (function () {
+
+    function normalizePlayerName(value) {
+        return String(value || '').trim();
+    }
+
+    function normalizePlayerChips(value) {
+        const chips = parseInt(value);
+        return Number.isFinite(chips) && chips > 0 ? chips : 500;
+    }
+
+    function makeImportedPlayer(rawPlayer, index) {
+        return {
+            id: Date.now() + index + Math.floor(Math.random() * 100000),
+            name: normalizePlayerName(rawPlayer.name || rawPlayer.player || rawPlayer.имя),
+            chips: normalizePlayerChips(rawPlayer.chips || rawPlayer.points || rawPlayer.очки),
+            eliminated: false,
+            eliminationPlace: null
+        };
+    }
+
+    function getPlayersForExport() {
+        return state.grid.players.map(player => ({
+            name: player.name,
+            chips: player.chips
+        }));
+    }
+
+    function savePlayersToFile() {
+        if (!state.grid.players || state.grid.players.length === 0) {
+            alert('Список игроков пуст. Нечего сохранять.');
+            return;
+        }
+
+        const exportData = {
+            type: 'poker_timer_players',
+            version: 1,
+            exportedAt: new Date().toISOString(),
+            players: getPlayersForExport()
+        };
+
+        const json = JSON.stringify(exportData, null, 2);
+        const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+
+        const now = new Date();
+        const date = now.toISOString().slice(0, 10);
+
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `poker-players-${date}.json`;
+        link.click();
+
+        URL.revokeObjectURL(link.href);
+    }
+
+    function parsePlayersJson(text) {
+        const data = JSON.parse(text);
+
+        /*
+         * Поддерживаем два варианта:
+         * 1. Наш формат:
+         * {
+         *   players: [...]
+         * }
+         *
+         * 2. Просто массив:
+         * [
+         *   { name: "Иван", chips: 500 }
+         * ]
+         */
+        if (Array.isArray(data)) {
+            return data;
+        }
+
+        if (data && Array.isArray(data.players)) {
+            return data.players;
+        }
+
+        throw new Error('В файле не найден массив players');
+    }
+
+    function parsePlayersCsvOrTxt(text) {
+        /*
+         * Поддержка простого txt/csv:
+         *
+         * Иван;500
+         * Катя;700
+         *
+         * или:
+         *
+         * Иван,500
+         * Катя,700
+         *
+         * или просто:
+         *
+         * Иван
+         * Катя
+         */
+        const lines = text
+            .split(/\r?\n/)
+            .map(line => line.trim())
+            .filter(Boolean);
+
+        const players = [];
+
+        lines.forEach((line, index) => {
+            /*
+             * Пропускаем заголовок, если он есть.
+             */
+            if (
+                index === 0 &&
+                /name|chips|имя|очки|баллы/i.test(line)
+            ) {
+                return;
+            }
+
+            let parts;
+
+            if (line.includes(';')) {
+                parts = line.split(';');
+            } else if (line.includes(',')) {
+                parts = line.split(',');
+            } else {
+                parts = [line, 500];
+            }
+
+            const name = normalizePlayerName(parts[0]);
+            const chips = normalizePlayerChips(parts[1]);
+
+            if (name) {
+                players.push({
+                    name,
+                    chips
+                });
+            }
+        });
+
+        return players;
+    }
+
+    function parseImportedPlayers(text, fileName) {
+        const lowerName = String(fileName || '').toLowerCase();
+
+        if (lowerName.endsWith('.json')) {
+            return parsePlayersJson(text);
+        }
+
+        if (
+            lowerName.endsWith('.csv') ||
+            lowerName.endsWith('.txt')
+        ) {
+            return parsePlayersCsvOrTxt(text);
+        }
+
+        /*
+         * Если расширение неизвестное — сначала пробуем JSON,
+         * потом TXT/CSV.
+         */
+        try {
+            return parsePlayersJson(text);
+        } catch (e) {
+            return parsePlayersCsvOrTxt(text);
+        }
+    }
+
+    function resetGridBeforeImportIfNeeded() {
+        if (state.grid.gridCreated || state.grid.tables.length > 0) {
+            const confirmReset = confirm(
+                'Сетка уже создана. Чтобы загрузить новый список игроков, нужно очистить текущую сетку.\n\nОчистить сетку и загрузить список?'
+            );
+
+            if (!confirmReset) {
+                return false;
+            }
+
+            state.grid.tables = [];
+            state.grid.gridCreated = false;
+            state.grid.eliminationOrder = [];
+            state.grid.tournamentEnded = false;
+
+            const tablesContainer = document.getElementById('tablesContainer');
+            if (tablesContainer) {
+                tablesContainer.innerHTML = '';
+            }
+
+            const finalTableSection = document.getElementById('finalTableSection');
+            if (finalTableSection) {
+                finalTableSection.style.display = 'none';
+            }
+
+            const addPlayerAfterGridSection = document.getElementById('addPlayerAfterGridSection');
+            if (addPlayerAfterGridSection) {
+                addPlayerAfterGridSection.style.display = 'none';
+            }
+        }
+
+        return true;
+    }
+
+    function loadPlayersFromFile() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json,.csv,.txt,application/json,text/plain,text/csv';
+
+        input.addEventListener('change', function (event) {
+            const file = event.target.files[0];
+
+            if (!file) return;
+
+            const reader = new FileReader();
+
+            reader.onload = function (readerEvent) {
+                try {
+                    const text = readerEvent.target.result;
+                    const rawPlayers = parseImportedPlayers(text, file.name);
+
+                    if (!Array.isArray(rawPlayers) || rawPlayers.length === 0) {
+                        alert('В файле не найдено игроков.');
+                        return;
+                    }
+
+                    const importedPlayers = rawPlayers
+                        .map((rawPlayer, index) => makeImportedPlayer(rawPlayer, index))
+                        .filter(player => player.name);
+
+                    if (importedPlayers.length === 0) {
+                        alert('Не удалось загрузить игроков. Проверьте файл.');
+                        return;
+                    }
+
+                    if (!resetGridBeforeImportIfNeeded()) {
+                        return;
+                    }
+
+                    let replaceList = true;
+
+                    if (state.grid.players.length > 0) {
+                        replaceList = confirm(
+                            'Заменить текущий список игроков?\n\nОК — заменить список.\nОтмена — добавить игроков к текущему списку.'
+                        );
+                    }
+
+                    if (replaceList) {
+                        state.grid.players = importedPlayers;
+                    } else {
+                        state.grid.players = state.grid.players.concat(importedPlayers);
+                    }
+
+                    /*
+                     * На всякий случай очищаем статусы.
+                     */
+                    state.grid.players.forEach((player, index) => {
+                        player.id = player.id || Date.now() + index + Math.floor(Math.random() * 100000);
+                        player.name = normalizePlayerName(player.name);
+                        player.chips = normalizePlayerChips(player.chips);
+                        player.eliminated = false;
+                        player.eliminationPlace = null;
+                    });
+
+                    renderPlayerList();
+
+                    if (typeof renderRating === 'function') {
+                        renderRating();
+                    }
+
+                    if (typeof saveGridData === 'function') {
+                        saveGridData();
+                    }
+
+                    alert(`Загружено игроков: ${importedPlayers.length}`);
+                } catch (error) {
+                    console.error(error);
+                    alert('Ошибка загрузки файла: ' + error.message);
+                }
+            };
+
+            reader.readAsText(file, 'UTF-8');
+        });
+
+        input.click();
+    }
+
+    function addPlayerFileButtons() {
+        const registrationSection = document.getElementById('playerRegistrationSection');
+
+        if (!registrationSection) return;
+
+        /*
+         * Чтобы кнопки не добавлялись повторно.
+         */
+        if (document.getElementById('savePlayersFileBtn')) return;
+
+        const buttonsWrapper = document.createElement('div');
+        buttonsWrapper.style.display = 'flex';
+        buttonsWrapper.style.gap = '10px';
+        buttonsWrapper.style.flexWrap = 'wrap';
+        buttonsWrapper.style.marginTop = '15px';
+
+        buttonsWrapper.innerHTML = `
+            <button class="btn btn-secondary" id="savePlayersFileBtn">💾 Сохранить список игроков</button>
+            <button class="btn btn-secondary" id="loadPlayersFileBtn">📂 Загрузить список игроков</button>
+        `;
+
+        /*
+         * Вставляем кнопки после кнопки "Создать сетку".
+         */
+        const createGridBtn = document.getElementById('createGridBtn');
+
+        if (createGridBtn && createGridBtn.parentNode) {
+            createGridBtn.parentNode.insertBefore(buttonsWrapper, createGridBtn.nextSibling);
+        } else {
+            registrationSection.appendChild(buttonsWrapper);
+        }
+
+        document.getElementById('savePlayersFileBtn').addEventListener('click', savePlayersToFile);
+        document.getElementById('loadPlayersFileBtn').addEventListener('click', loadPlayersFromFile);
+    }
+
+    addPlayerFileButtons();
+
+    /*
+     * Если страница переключалась или интерфейс обновился,
+     * кнопки всё равно появятся.
+     */
+    const oldShowPage = window.showPage || showPage;
+
+    if (typeof oldShowPage === 'function') {
+        showPage = function (pageId) {
+            oldShowPage(pageId);
+
+            setTimeout(() => {
+                addPlayerFileButtons();
+            }, 100);
+        };
+
+        window.showPage = showPage;
+    }
+
+    window.savePlayersToFile = savePlayersToFile;
+    window.loadPlayersFromFile = loadPlayersFromFile;
+
+})();
     </script>
 </body>
 </html>
