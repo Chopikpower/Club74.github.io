@@ -5681,6 +5681,248 @@
     }
 
 })();
+		/************************************************************
+ * PATCH: кнопка "Правила" для всех пользователей
+ * Загружает текст из rules.txt
+ ************************************************************/
+(function () {
+
+    function addRulesStyles() {
+        if (document.getElementById('rulesPageStylesFixed')) return;
+
+        const style = document.createElement('style');
+        style.id = 'rulesPageStylesFixed';
+
+        style.textContent = `
+            .rules-container-fixed {
+                max-width: 1100px;
+                margin: 0 auto;
+                padding: clamp(15px, 3vw, 30px) clamp(15px, 2vw, 20px);
+            }
+
+            .rules-card-fixed {
+                background: var(--card-bg);
+                border: 2px solid var(--primary-color);
+                border-radius: 15px;
+                padding: clamp(20px, 4vw, 40px);
+                box-shadow: 0 0 30px rgba(0, 191, 255, 0.18);
+            }
+
+            .rules-header-fixed {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 15px;
+                flex-wrap: wrap;
+                margin-bottom: 25px;
+                padding-bottom: 15px;
+                border-bottom: 1px solid var(--border-color);
+            }
+
+            .rules-header-fixed h2 {
+                color: var(--primary-color);
+                font-size: clamp(24px, 3vw, 34px);
+                margin: 0;
+            }
+
+            .rules-text-fixed {
+                color: var(--text-color);
+                font-size: clamp(16px, 1.25vw, 19px);
+                line-height: 1.75;
+                text-align: justify;
+                white-space: pre-wrap;
+                word-break: normal;
+                overflow-wrap: break-word;
+            }
+
+            .rules-info-fixed {
+                margin-top: 25px;
+                padding-top: 15px;
+                border-top: 1px solid var(--border-color);
+                color: var(--text-muted);
+                font-size: 13px;
+            }
+
+            @media (max-width: 600px) {
+                .rules-text-fixed {
+                    text-align: left;
+                    line-height: 1.65;
+                }
+            }
+        `;
+
+        document.head.appendChild(style);
+    }
+
+    function addRulesPage() {
+        let page = document.getElementById('rulesPage');
+
+        if (!page) {
+            page = document.createElement('div');
+            page.className = 'page';
+            page.id = 'rulesPage';
+
+            page.innerHTML = `
+                <div class="rules-container-fixed">
+                    <div class="rules-card-fixed">
+                        <div class="rules-header-fixed">
+                            <h2>📜 Правила турнира</h2>
+                            <button class="btn btn-secondary nav-btn" data-page="timerPage">← Назад к таймеру</button>
+                        </div>
+
+                        <div class="rules-text-fixed" id="rulesTextFixed">
+                            Загрузка правил...
+                        </div>
+
+                        <div class="rules-info-fixed">
+                            Текст загружается из файла <strong>rules.txt</strong>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(page);
+        }
+    }
+
+    function addRulesButton() {
+        /*
+         * Удаляем старую кнопку, если она была создана криво.
+         */
+        const oldRulesBtn = document.getElementById('rulesBtn');
+        if (oldRulesBtn) {
+            oldRulesBtn.remove();
+        }
+
+        const ratingBtn = document.getElementById('ratingBtn');
+        const userInfo = document.querySelector('.user-info');
+
+        if (!userInfo) return;
+
+        const rulesBtn = document.createElement('button');
+
+        /*
+         * Цвет и стиль такие же, как у кнопки "Рейтинг".
+         */
+        rulesBtn.className = 'btn btn-warning nav-btn';
+        rulesBtn.id = 'rulesBtn';
+        rulesBtn.setAttribute('data-page', 'rulesPage');
+        rulesBtn.type = 'button';
+        rulesBtn.textContent = '📜 Правила';
+
+        /*
+         * Ставим кнопку прямо перед "Рейтинг".
+         */
+        if (ratingBtn && ratingBtn.parentNode) {
+            ratingBtn.parentNode.insertBefore(rulesBtn, ratingBtn);
+        } else {
+            userInfo.insertBefore(rulesBtn, userInfo.firstChild);
+        }
+
+        /*
+         * Дополнительный прямой обработчик,
+         * чтобы кнопка точно открывала страницу.
+         */
+        rulesBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            openRulesPage();
+        });
+    }
+
+    async function loadRulesText() {
+        const textBlock =
+            document.getElementById('rulesTextFixed') ||
+            document.getElementById('rulesText');
+
+        if (!textBlock) return;
+
+        textBlock.textContent = 'Загрузка правил...';
+
+        try {
+            const response = await fetch('rules.txt?t=' + Date.now(), {
+                cache: 'no-store'
+            });
+
+            if (!response.ok) {
+                throw new Error('Файл rules.txt не найден');
+            }
+
+            const text = await response.text();
+
+            if (!text.trim()) {
+                textBlock.textContent = 'Файл rules.txt пустой.';
+                return;
+            }
+
+            textBlock.textContent = text;
+        } catch (error) {
+            textBlock.textContent =
+                'Не удалось загрузить правила.\n\n' +
+                'Создай файл rules.txt рядом с index.html и залей его на GitHub.\n\n' +
+                'Ошибка: ' + error.message;
+        }
+    }
+
+    function openRulesPage() {
+        addRulesStyles();
+        addRulesPage();
+
+        document.querySelectorAll('.page').forEach(page => {
+            page.classList.remove('active');
+        });
+
+        const rulesPage = document.getElementById('rulesPage');
+
+        if (rulesPage) {
+            rulesPage.classList.add('active');
+        }
+
+        try {
+            history.replaceState(null, '', '#rulesPage');
+        } catch (e) {}
+
+        loadRulesText();
+    }
+
+    /*
+     * Оборачиваем showPage, чтобы работала обычная навигация.
+     */
+    const oldShowPage = window.showPage || showPage;
+
+    if (typeof oldShowPage === 'function') {
+        showPage = function (pageId) {
+            if (pageId === 'rulesPage') {
+                openRulesPage();
+                return;
+            }
+
+            oldShowPage(pageId);
+        };
+
+        window.showPage = showPage;
+    }
+
+    /*
+     * Если пользователь открыл ссылку сразу с #rulesPage.
+     */
+    function handleRulesHash() {
+        const hash = window.location.hash.replace('#', '').split('?')[0];
+
+        if (hash === 'rulesPage') {
+            openRulesPage();
+        }
+    }
+
+    addRulesStyles();
+    addRulesPage();
+    addRulesButton();
+
+    handleRulesHash();
+
+    window.openRulesPage = openRulesPage;
+    window.loadRulesText = loadRulesText;
+
+})();
     </script>
 </body>
 </html>
