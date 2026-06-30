@@ -4270,6 +4270,277 @@
     window.clearGridData = clearGridData;
     window.applyTemplateToTimer = applyTemplateToTimer;
 })();
+/************************************************************
+ * PATCH: исправление пересадки игроков по местам
+ * Игрок теперь рисуется строго по seatNumber, а не по порядку массива
+ ************************************************************/
+(function () {
+
+    function sortTablePlayersBySeat(table) {
+        if (!table || !Array.isArray(table.players)) return;
+
+        table.players.sort((a, b) => {
+            return Number(a.seatNumber || 0) - Number(b.seatNumber || 0);
+        });
+    }
+
+    function sortAllTablesBySeat() {
+        if (!state || !state.grid || !Array.isArray(state.grid.tables)) return;
+
+        state.grid.tables.forEach(table => {
+            sortTablePlayersBySeat(table);
+        });
+    }
+
+    /*
+     * Исправленная функция пересадки.
+     * Теперь при обмене местами второй игрок реально возвращается
+     * на старое место первого игрока, а не просто добавляется в конец.
+     */
+    confirmMovePlayer = function () {
+        const targetTableRaw = document.getElementById('moveToTable').value;
+        const targetSeat = parseInt(document.getElementById('moveToSeat').value);
+
+        if (!state.grid.selectedPlayer) {
+            alert('Игрок не выбран');
+            return;
+        }
+
+        const selected = state.grid.selectedPlayer;
+        const movingPlayerId = selected.player.id;
+        const fromTableId = selected.tableId;
+
+        const fromTable = state.grid.tables.find(t => String(t.id) === String(fromTableId));
+        const toTable = state.grid.tables.find(t => String(t.id) === String(targetTableRaw));
+
+        if (!fromTable || !toTable) {
+            alert('Стол не найден');
+            return;
+        }
+
+        const movingPlayer = fromTable.players.find(p => p.id === movingPlayerId);
+
+        if (!movingPlayer) {
+            alert('Игрок не найден за исходным столом');
+            return;
+        }
+
+        const oldSeat = Number(movingPlayer.seatNumber);
+
+        /*
+         * Если пересаживаем на то же самое место того же стола
+         */
+        if (String(fromTable.id) === String(toTable.id) && oldSeat === targetSeat) {
+            document.getElementById('movePlayerModal').classList.remove('active');
+            return;
+        }
+
+        /*
+         * Игрок, который уже сидит на выбранном месте
+         */
+        const existingPlayer = toTable.players.find(p => {
+            return Number(p.seatNumber) === targetSeat && p.id !== movingPlayer.id;
+        });
+
+        /*
+         * Вариант 1: пересадка внутри одного стола
+         */
+        if (String(fromTable.id) === String(toTable.id)) {
+            if (existingPlayer) {
+                existingPlayer.seatNumber = oldSeat;
+            }
+
+            movingPlayer.seatNumber = targetSeat;
+
+            sortTablePlayersBySeat(fromTable);
+        }
+
+        /*
+         * Вариант 2: пересадка между разными столами
+         */
+        else {
+            /*
+             * Убираем пересаживаемого игрока со старого стола
+             */
+            fromTable.players = fromTable.players.filter(p => p.id !== movingPlayer.id);
+
+            /*
+             * Если на новом месте кто-то сидит,
+             * убираем его с нового стола и пересаживаем
+             * на старое место movingPlayer.
+             */
+            if (existingPlayer) {
+                toTable.players = toTable.players.filter(p => p.id !== existingPlayer.id);
+
+                existingPlayer.seatNumber = oldSeat;
+                fromTable.players.push(existingPlayer);
+            }
+
+            /*
+             * Пересаживаем выбранного игрока на новое место
+             */
+            movingPlayer.seatNumber = targetSeat;
+            toTable.players.push(movingPlayer);
+
+            sortTablePlayersBySeat(fromTable);
+            sortTablePlayersBySeat(toTable);
+        }
+
+        sortAllTablesBySeat();
+
+        document.getElementById('movePlayerModal').classList.remove('active');
+
+        renderTables();
+        saveGridData();
+    };
+
+    /*
+     * Исправленная отрисовка столов.
+     * Главное изменение:
+     * позиция игрока считается по player.seatNumber,
+     * а не по индексу в массиве.
+     */
+    renderTables = function () {
+        sortAllTablesBySeat();
+
+        const container = document.getElementById('tablesContainer');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        state.grid.tables.forEach((table) => {
+            sortTablePlayersBySeat(table);
+
+            const tableDiv = document.createElement('div');
+            tableDiv.className = 'poker-table';
+
+            const header = document.createElement('div');
+            header.className = 'table-header';
+            header.textContent = `Стол ${table.id} - ${table.players.length} участников`;
+            tableDiv.appendChild(header);
+
+            const ovalContainer = document.createElement('div');
+            ovalContainer.className = 'table-oval-container';
+
+            const oval = document.createElement('div');
+            oval.className = 'table-oval';
+
+            if (table.id === 'Финальный') {
+                oval.classList.add('final-table');
+
+                const finalLabel = document.createElement('div');
+                finalLabel.className = 'final-table-label';
+                finalLabel.textContent = 'ФИНАЛ';
+                ovalContainer.appendChild(finalLabel);
+            }
+
+            /*
+             * Количество позиций за столом.
+             * Берём максимум из:
+             * - maxPlayersPerTable
+             * - самого большого seatNumber за этим столом
+             */
+            const maxSeatNumber = table.players.reduce((max, player) => {
+                return Math.max(max, Number(player.seatNumber || 0));
+            }, 0);
+
+            const totalSeats = Math.max(
+                Number(state.grid.maxPlayersPerTable || 0),
+                maxSeatNumber,
+                table.players.length,
+                1
+            );
+
+            const positions = calculateSymmetricSeatPositions(totalSeats);
+
+            table.players.forEach((player) => {
+                const seat = document.createElement('div');
+                seat.className = `table-seat ${player.eliminated ? 'eliminated' : ''}`;
+
+                const seatSize = calculateSeatSize(player.name);
+                seat.style.width = seatSize + 'px';
+                seat.style.height = seatSize + 'px';
+
+                /*
+                 * ВАЖНО:
+                 * Раньше было по индексу массива.
+                 * Теперь строго по номеру места.
+                 */
+                const seatIndex = Math.max(0, Number(player.seatNumber || 1) - 1);
+                const pos = positions[seatIndex] || positions[0];
+
+                seat.style.left = pos.x + '%';
+                seat.style.top = pos.y + '%';
+
+                seat.innerHTML = `
+                    <div class="seat-number">#${player.seatNumber}</div>
+                    <div class="seat-name">${player.name}</div>
+                    <div class="seat-chips">${player.chips}</div>
+                `;
+
+                if (state.isAdmin) {
+                    seat.onclick = () => openPlayerAction(player, table.id);
+                }
+
+                oval.appendChild(seat);
+            });
+
+            ovalContainer.appendChild(oval);
+            tableDiv.appendChild(ovalContainer);
+
+            if (state.isAdmin) {
+                const controls = document.createElement('div');
+                controls.className = 'table-controls';
+                controls.innerHTML = `
+                    <button class="btn btn-warning btn-small" onclick="eliminateFromTable('${table.id}')">Выбывание</button>
+                `;
+                tableDiv.appendChild(controls);
+            }
+
+            container.appendChild(tableDiv);
+        });
+
+        const activePlayers = state.grid.players.filter(p => !p.eliminated).length;
+        const finalTableSection = document.getElementById('finalTableSection');
+
+        if (finalTableSection) {
+            if (state.isAdmin) {
+                finalTableSection.style.display = activePlayers >= 1 ? 'block' : 'none';
+            } else {
+                finalTableSection.style.display = 'none';
+            }
+        }
+    };
+
+    /*
+     * Обновляем обработчик кнопки "Пересадить",
+     * чтобы точно использовалась новая функция.
+     */
+    const oldConfirmMoveBtn = document.getElementById('confirmMoveBtn');
+
+    if (oldConfirmMoveBtn) {
+        const newConfirmMoveBtn = oldConfirmMoveBtn.cloneNode(true);
+        oldConfirmMoveBtn.parentNode.replaceChild(newConfirmMoveBtn, oldConfirmMoveBtn);
+
+        newConfirmMoveBtn.addEventListener('click', confirmMovePlayer);
+    }
+
+    /*
+     * Сразу перерисовываем столы после загрузки патча.
+     */
+    sortAllTablesBySeat();
+
+    if (typeof renderTables === 'function') {
+        renderTables();
+    }
+
+    /*
+     * Делаем функции доступными глобально.
+     */
+    window.confirmMovePlayer = confirmMovePlayer;
+    window.renderTables = renderTables;
+
+})();
     </script>
 </body>
 </html>
