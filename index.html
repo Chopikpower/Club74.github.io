@@ -1113,7 +1113,7 @@
                 text-align: center;
             }
         }
-
+	
         @media (max-width: 480px) {
             .timer-time {
                 font-size: 36px;
@@ -1147,6 +1147,439 @@
                 text-align: center;
             }
         }
+	/* ================================
+   Страница Турнир
+================================ */
+
+.tournament-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.tournament-hero {
+    background: linear-gradient(135deg, var(--card-bg), var(--secondary-color));
+    border: 2px solid var(--primary-color);
+    border-radius: 18px;
+    padding: 28px;
+    margin-bottom: 25px;
+    box-shadow: 0 0 30px rgba(0, 191, 255, 0.18);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.tournament-hero h2 {
+    color: var(--primary-color);
+    font-size: clamp(26px, 3vw, 38px);
+    margin-bottom: 8px;
+}
+
+.tournament-hero p {
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.tournament-tabs {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 22px;
+}
+
+.tournament-tab {
+    padding: 12px 18px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--card-bg);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-weight: 700;
+    transition: 0.25s;
+}
+
+.tournament-tab:hover,
+.tournament-tab.active {
+    background: var(--primary-color);
+    color: #fff;
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+}
+
+.tournament-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 18px;
+    margin-bottom: 24px;
+}
+
+.tournament-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 22px;
+    transition: 0.25s;
+}
+
+.tournament-card:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 6px 22px rgba(0, 191, 255, 0.12);
+    transform: translateY(-2px);
+}
+
+.tournament-card h3 {
+    color: var(--primary-color);
+    margin-bottom: 14px;
+}
+
+.tournament-card p {
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.tournament-value {
+    font-size: 28px;
+    font-weight: 800;
+    color: #fff;
+    margin-top: 8px;
+}
+
+.tournament-panel {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 20px;
+}
+
+.tournament-panel h3 {
+    color: var(--primary-color);
+    margin-bottom: 16px;
+}
+
+.tournament-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+}
+
+.tournament-table-wrap {
+    overflow-x: auto;
+}
+
+.tournament-levels-table {
+    width: 100%;
+    min-width: 650px;
+    border-collapse: collapse;
+}
+
+.tournament-levels-table th,
+.tournament-levels-table td {
+    text-align: center;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+}
+
+.tournament-levels-table th {
+    background: var(--secondary-color);
+    color: var(--primary-color);
+}
+
+.tournament-levels-table input {
+    width: 95px;
+    padding: 7px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    text-align: center;
+}
+
+.tournament-player-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin: 8px 0;
+}
+
+.tournament-player-row strong {
+    color: #fff;
+}
+
+.tournament-player-row span {
+    color: var(--warning-color);
+    font-weight: 700;
+}
+
+.tournament-rules-textarea {
+    width: 100%;
+    min-height: 460px;
+    resize: vertical;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    color: var(--text-color);
+    padding: 18px;
+    font-size: 16px;
+    line-height: 1.65;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.tournament-rules-view {
+    white-space: pre-wrap;
+    text-align: justify;
+    line-height: 1.75;
+    font-size: 18px;
+    color: var(--text-color);
+}
+
+.tournament-empty {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 30px;
+    border: 1px dashed var(--border-color);
+    border-radius: 12px;
+}
+
+@media (max-width: 600px) {
+    .tournament-hero {
+        padding: 20px;
+    }
+
+    .tournament-player-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .tournament-rules-view {
+        text-align: left;
+    }
+}
+
+/* ================================
+   Страница Турнир
+================================ */
+
+.tournament-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.tournament-hero {
+    background: linear-gradient(135deg, var(--card-bg), var(--secondary-color));
+    border: 2px solid var(--primary-color);
+    border-radius: 18px;
+    padding: 28px;
+    margin-bottom: 25px;
+    box-shadow: 0 0 30px rgba(0, 191, 255, 0.18);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.tournament-hero h2 {
+    color: var(--primary-color);
+    font-size: clamp(26px, 3vw, 38px);
+    margin-bottom: 8px;
+}
+
+.tournament-hero p {
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.tournament-tabs {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 22px;
+}
+
+.tournament-tab {
+    padding: 12px 18px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--card-bg);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-weight: 700;
+    transition: 0.25s;
+}
+
+.tournament-tab:hover,
+.tournament-tab.active {
+    background: var(--primary-color);
+    color: #fff;
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+}
+
+.tournament-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 18px;
+    margin-bottom: 24px;
+}
+
+.tournament-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 22px;
+    transition: 0.25s;
+}
+
+.tournament-card:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 6px 22px rgba(0, 191, 255, 0.12);
+    transform: translateY(-2px);
+}
+
+.tournament-card h3 {
+    color: var(--primary-color);
+    margin-bottom: 14px;
+}
+
+.tournament-card p {
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.tournament-value {
+    font-size: 28px;
+    font-weight: 800;
+    color: #fff;
+    margin-top: 8px;
+}
+
+.tournament-panel {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 20px;
+}
+
+.tournament-panel h3 {
+    color: var(--primary-color);
+    margin-bottom: 16px;
+}
+
+.tournament-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+}
+
+.tournament-table-wrap {
+    overflow-x: auto;
+}
+
+.tournament-levels-table {
+    width: 100%;
+    min-width: 650px;
+    border-collapse: collapse;
+}
+
+.tournament-levels-table th,
+.tournament-levels-table td {
+    text-align: center;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+}
+
+.tournament-levels-table th {
+    background: var(--secondary-color);
+    color: var(--primary-color);
+}
+
+.tournament-levels-table input {
+    width: 95px;
+    padding: 7px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    text-align: center;
+}
+
+.tournament-player-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin: 8px 0;
+}
+
+.tournament-player-row strong {
+    color: #fff;
+}
+
+.tournament-player-row span {
+    color: var(--warning-color);
+    font-weight: 700;
+}
+
+.tournament-rules-textarea {
+    width: 100%;
+    min-height: 460px;
+    resize: vertical;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    color: var(--text-color);
+    padding: 18px;
+    font-size: 16px;
+    line-height: 1.65;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.tournament-rules-view {
+    white-space: pre-wrap;
+    text-align: justify;
+    line-height: 1.75;
+    font-size: 18px;
+    color: var(--text-color);
+}
+
+.tournament-empty {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 30px;
+    border: 1px dashed var(--border-color);
+    border-radius: 12px;
+}
+
+@media (max-width: 600px) {
+    .tournament-hero {
+        padding: 20px;
+    }
+
+    .tournament-player-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .tournament-rules-view {
+        text-align: left;
+    }
+}
     </style>
 </head>
 <body>
@@ -1156,7 +1589,7 @@
             <span class="user-role" id="userRole">Гость</span>
             <button class="btn btn-warning nav-btn" data-page="ratingPage" id="ratingBtn">🏆 Рейтинг</button>
             <button class="btn btn-success nav-btn" data-page="gridPage" id="gridBtn">📊 Сетка</button>
-            <button class="btn btn-secondary nav-btn" data-page="editorPage" id="editorBtn" style="display:none;">📝 Редактор</button>
+            <button class="btn btn-secondary nav-btn" data-page="tournamentPage" id="editorBtn" style="display:none;">⚙️ Турнир</button>
             <button class="btn btn-primary" id="loginBtn">Вход</button>
             <button class="btn btn-secondary" id="logoutBtn" style="display:none;">Выход</button>
         </div>
