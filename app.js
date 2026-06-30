@@ -21,6 +21,12 @@ let cloudReady = false;
 const state = {
     isAdmin: false,
     currentPage: 'timerPage',
+	tournament: {
+	    name: 'Покерный турнир',
+	    date: '',
+	    startingChips: 500,
+	    maxPlayersPerTable: 6
+	},
 
     timer: {
         currentLevel: 1,
@@ -386,7 +392,8 @@ function makeSettingsData() {
         primaryColor: state.settings.primaryColor,
         volume: state.settings.volume,
         totalPoints: state.settings.totalPoints,
-        prizePlaces: state.settings.prizePlaces
+        prizePlaces: state.settings.prizePlaces,
+        tournament: state.tournament
     };
 }
 
@@ -395,6 +402,7 @@ function applySettingsData(data) {
     if (typeof data.volume !== 'undefined') state.settings.volume = data.volume;
     if (data.totalPoints) state.settings.totalPoints = data.totalPoints;
     if (Array.isArray(data.prizePlaces)) state.settings.prizePlaces = data.prizePlaces;
+    if (data.tournament) { state.tournament = { ...state.tournament, ...data.tournament};
 }
 
 /************************************************************
@@ -1938,6 +1946,640 @@ function loadPointsPreset() {
     updatePointsConfig();
     $('pointsPresetModal').classList.remove('active');
 }
+/************************************************************
+ * TOURNAMENT PAGE
+ ************************************************************/
+
+function ensureTournamentPage() {
+    if ($('tournamentPage')) return;
+
+    const page = document.createElement('div');
+    page.className = 'page';
+    page.id = 'tournamentPage';
+
+    page.innerHTML = `
+        <div class="tournament-container">
+            <div class="tournament-hero">
+                <div>
+                    <h2>⚙️ Управление турниром</h2>
+                    <p>
+                        Здесь собраны основные настройки турнира:
+                        уровни, перерывы, участники, призовые очки и правила.
+                    </p>
+                </div>
+                <button class="btn btn-secondary nav-btn" data-page="timerPage">← Назад к таймеру</button>
+            </div>
+
+            <div class="tournament-tabs">
+                <button class="tournament-tab active" data-tournament-tab="overview">📌 Обзор</button>
+                <button class="tournament-tab" data-tournament-tab="structure">⏱ Уровни и перерывы</button>
+                <button class="tournament-tab" data-tournament-tab="players">👥 Участники</button>
+                <button class="tournament-tab" data-tournament-tab="points">🏆 Очки</button>
+                <button class="tournament-tab" data-tournament-tab="rules">📜 Правила</button>
+            </div>
+
+            <div id="tournamentContent"></div>
+        </div>
+    `;
+
+    document.body.appendChild(page);
+}
+
+function setTournamentTab(tabName) {
+    state.tournamentActiveTab = tabName;
+
+    document.querySelectorAll('.tournament-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tournamentTab === tabName);
+    });
+
+    renderTournamentPage(tabName);
+}
+
+function renderTournamentPage(tabName = state.tournamentActiveTab || 'overview') {
+    ensureTournamentPage();
+
+    state.tournamentActiveTab = tabName;
+
+    document.querySelectorAll('.tournament-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tournamentTab === tabName);
+    });
+
+    if (tabName === 'overview') renderTournamentOverview();
+    if (tabName === 'structure') renderTournamentStructure();
+    if (tabName === 'players') renderTournamentPlayers();
+    if (tabName === 'points') renderTournamentPoints();
+    if (tabName === 'rules') renderTournamentRules();
+}
+
+/************************************************************
+ * TOURNAMENT: OVERVIEW
+ ************************************************************/
+
+function renderTournamentOverview() {
+    const box = $('tournamentContent');
+    if (!box) return;
+
+    const activePlayers = state.grid.players.filter(p => !p.eliminated).length;
+    const totalPlayers = state.grid.players.length;
+    const template = currentTemplate();
+
+    box.innerHTML = `
+        <div class="tournament-grid">
+            <div class="tournament-card">
+                <h3>🎲 Турнир</h3>
+                <p>Название турнира</p>
+                <div class="tournament-value">${escapeHtml(state.tournament.name || 'Без названия')}</div>
+            </div>
+
+            <div class="tournament-card">
+                <h3>👥 Участники</h3>
+                <p>Всего / активных</p>
+                <div class="tournament-value">${totalPlayers} / ${activePlayers}</div>
+            </div>
+
+            <div class="tournament-card">
+                <h3>⏱ Уровень</h3>
+                <p>Текущий уровень таймера</p>
+                <div class="tournament-value">${state.timer.currentLevel} / ${template.levels.length}</div>
+            </div>
+
+            <div class="tournament-card">
+                <h3>🏆 Призовые места</h3>
+                <p>Количество оплачиваемых мест</p>
+                <div class="tournament-value">${state.settings.prizePlaces.length}</div>
+            </div>
+        </div>
+
+        <div class="tournament-panel">
+            <h3>📌 Основные настройки</h3>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Название турнира</label>
+                    <input type="text" id="tournamentNameInput" value="${escapeHtml(state.tournament.name || '')}">
+                </div>
+
+                <div class="form-group">
+                    <label>Дата турнира</label>
+                    <input type="date" id="tournamentDateInput" value="${escapeHtml(state.tournament.date || '')}">
+                </div>
+
+                <div class="form-group">
+                    <label>Стартовые очки игрока</label>
+                    <input type="number" id="tournamentStartingChipsInput" value="${Number(state.tournament.startingChips || 500)}" min="1">
+                </div>
+
+                <div class="form-group">
+                    <label>Игроков за столом</label>
+                    <input type="number" id="tournamentMaxPlayersInput" value="${Number(state.grid.maxPlayersPerTable || state.tournament.maxPlayersPerTable || 6)}" min="2" max="12">
+                </div>
+            </div>
+
+            <div class="tournament-actions">
+                <button class="btn btn-primary" onclick="saveTournamentMainSettings()">💾 Сохранить настройки</button>
+                <button class="btn btn-secondary" onclick="setTournamentTab('structure')">⏱ Настроить уровни</button>
+                <button class="btn btn-secondary" onclick="setTournamentTab('players')">👥 Участники</button>
+            </div>
+        </div>
+    `;
+}
+
+function saveTournamentMainSettings() {
+    state.tournament.name = $('tournamentNameInput').value.trim() || 'Покерный турнир';
+    state.tournament.date = $('tournamentDateInput').value;
+    state.tournament.startingChips = parseInt($('tournamentStartingChipsInput').value) || 500;
+    state.tournament.maxPlayersPerTable = parseInt($('tournamentMaxPlayersInput').value) || 6;
+
+    state.grid.maxPlayersPerTable = state.tournament.maxPlayersPerTable;
+
+    if ($('playerChips')) $('playerChips').value = state.tournament.startingChips;
+    if ($('newPlayerChips')) $('newPlayerChips').value = state.tournament.startingChips;
+    if ($('maxPlayersPerTable')) $('maxPlayersPerTable').value = state.grid.maxPlayersPerTable;
+
+    saveSettingsData();
+    saveGridData();
+
+    alert('Настройки турнира сохранены');
+    renderTournamentPage('overview');
+}
+
+/************************************************************
+ * TOURNAMENT: STRUCTURE
+ ************************************************************/
+
+function renderTournamentStructure() {
+    const box = $('tournamentContent');
+    if (!box) return;
+
+    const template = currentTemplate();
+
+    box.innerHTML = `
+        <div class="tournament-panel">
+            <h3>⏱ Уровни и перерывы</h3>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Длительность уровня, минут</label>
+                    <input type="number" id="tournamentLevelDuration" value="${template.levelDuration}" min="1">
+                </div>
+
+                <div class="form-group">
+                    <label>Обычный перерыв, минут</label>
+                    <input type="number" id="tournamentBreakDuration" value="${template.breakDuration}" min="0">
+                </div>
+
+                <div class="form-group">
+                    <label>Перерыв после каждого N уровня</label>
+                    <input type="number" id="tournamentBreakEvery" value="${template.breakEveryNLevels}" min="1">
+                </div>
+
+                <div class="form-group">
+                    <label>Большой перерыв после уровня</label>
+                    <input type="number" id="tournamentBigBreakAfter" value="${template.bigBreakAfterLevel}" min="0">
+                </div>
+
+                <div class="form-group">
+                    <label>Большой перерыв, минут</label>
+                    <input type="number" id="tournamentBigBreakDuration" value="${template.bigBreakDuration}" min="1">
+                </div>
+            </div>
+
+            <div class="tournament-table-wrap">
+                <table class="tournament-levels-table">
+                    <thead>
+                        <tr>
+                            <th>Уровень</th>
+                            <th>SB</th>
+                            <th>BB</th>
+                            <th>Ante</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tournamentLevelsBody"></tbody>
+                </table>
+            </div>
+
+            <div class="tournament-actions">
+                <button class="btn btn-success" onclick="addTournamentLevel()">+ Добавить уровень</button>
+                <button class="btn btn-primary" onclick="saveTournamentStructure()">💾 Сохранить структуру</button>
+                <button class="btn btn-secondary" onclick="exportCurrentTemplate()">📥 Экспорт шаблона</button>
+                <button class="btn btn-secondary" onclick="importTemplate()">📂 Импорт шаблона</button>
+            </div>
+        </div>
+    `;
+
+    renderTournamentLevelsTable();
+}
+
+function renderTournamentLevelsTable() {
+    const tbody = $('tournamentLevelsBody');
+    if (!tbody) return;
+
+    const template = currentTemplate();
+
+    tbody.innerHTML = '';
+
+    template.levels.forEach((level, index) => {
+        const tr = document.createElement('tr');
+
+        tr.innerHTML = `
+            <td><strong>${level.level}</strong></td>
+            <td><input type="number" value="${level.sb}" onchange="updateTournamentLevel(${index}, 'sb', this.value)"></td>
+            <td><input type="number" value="${level.bb}" onchange="updateTournamentLevel(${index}, 'bb', this.value)"></td>
+            <td><input type="number" value="${level.ante}" onchange="updateTournamentLevel(${index}, 'ante', this.value)"></td>
+            <td>
+                <button class="btn btn-danger btn-small" onclick="deleteTournamentLevel(${index})">×</button>
+            </td>
+        `;
+
+        tbody.appendChild(tr);
+    });
+}
+
+function updateTournamentLevel(index, field, value) {
+    const template = currentTemplate();
+
+    if (!template.levels[index]) return;
+
+    template.levels[index][field] = parseInt(value) || 0;
+}
+
+function addTournamentLevel() {
+    const template = currentTemplate();
+    const last = template.levels[template.levels.length - 1];
+
+    template.levels.push({
+        level: template.levels.length + 1,
+        sb: last.sb * 2,
+        bb: last.bb * 2,
+        ante: last.ante ? last.ante * 2 : 0
+    });
+
+    renderTournamentLevelsTable();
+}
+
+function deleteTournamentLevel(index) {
+    const template = currentTemplate();
+
+    if (template.levels.length <= 1) {
+        alert('Должен остаться хотя бы один уровень');
+        return;
+    }
+
+    template.levels.splice(index, 1);
+    template.levels.forEach((level, i) => {
+        level.level = i + 1;
+    });
+
+    renderTournamentLevelsTable();
+}
+
+function saveTournamentStructure() {
+    const template = currentTemplate();
+
+    if (state.timer.isRunning) {
+        const ok = confirm(
+            'Таймер сейчас запущен. Сохранение структуры сбросит таймер на первый уровень.\n\nПродолжить?'
+        );
+
+        if (!ok) return;
+    }
+
+    template.levelDuration = parseInt($('tournamentLevelDuration').value) || 15;
+    template.breakDuration = parseInt($('tournamentBreakDuration').value) || 0;
+    template.breakEveryNLevels = parseInt($('tournamentBreakEvery').value) || 4;
+    template.bigBreakAfterLevel = parseInt($('tournamentBigBreakAfter').value) || 0;
+    template.bigBreakDuration = parseInt($('tournamentBigBreakDuration').value) || 20;
+
+    applyTemplateToTimer();
+    saveTimerState();
+
+    alert('Структура турнира сохранена');
+    renderTournamentPage('structure');
+}
+
+/************************************************************
+ * TOURNAMENT: PLAYERS
+ ************************************************************/
+
+function renderTournamentPlayers() {
+    const box = $('tournamentContent');
+    if (!box) return;
+
+    const playersHtml = state.grid.players.length
+        ? state.grid.players.map((player, index) => `
+            <div class="tournament-player-row">
+                <div>
+                    <strong>${index + 1}. ${escapeHtml(player.name)}</strong>
+                    ${player.eliminated ? '<span style="color:var(--danger-color); margin-left:8px;">выбыл</span>' : ''}
+                </div>
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <span>${player.chips} очков</span>
+                    <button class="btn btn-danger btn-small" onclick="removeTournamentPlayer(${player.id})">Удалить</button>
+                </div>
+            </div>
+        `).join('')
+        : `<div class="tournament-empty">Участники ещё не добавлены</div>`;
+
+    box.innerHTML = `
+        <div class="tournament-panel">
+            <h3>👥 Участники турнира</h3>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Имя участника</label>
+                    <input type="text" id="tournamentPlayerName" placeholder="Введите имя">
+                </div>
+
+                <div class="form-group">
+                    <label>Очки</label>
+                    <input type="number" id="tournamentPlayerChips" value="${Number(state.tournament.startingChips || 500)}" min="1">
+                </div>
+
+                <div class="form-group" style="display:flex; align-items:flex-end;">
+                    <button class="btn btn-success" onclick="addTournamentPlayer()">+ Добавить</button>
+                </div>
+            </div>
+
+            <div style="margin-top:15px;">
+                ${playersHtml}
+            </div>
+
+            <div class="tournament-actions">
+                <button class="btn btn-secondary" onclick="savePlayersToFile()">💾 Сохранить список</button>
+                <button class="btn btn-secondary" onclick="loadTournamentPlayersFromFile()">📂 Загрузить список</button>
+                <button class="btn btn-primary" onclick="createTournamentGrid()">🎲 Создать сетку</button>
+                <button class="btn btn-danger" onclick="clearTournamentPlayers()">🗑 Очистить участников</button>
+            </div>
+        </div>
+    `;
+}
+
+function addTournamentPlayer() {
+    const name = $('tournamentPlayerName').value.trim();
+    const chips = parseInt($('tournamentPlayerChips').value) || state.tournament.startingChips || 500;
+
+    if (!name) {
+        alert('Введите имя участника');
+        return;
+    }
+
+    state.grid.players.push({
+        id: uid(),
+        name,
+        chips,
+        eliminated: false,
+        eliminationPlace: null
+    });
+
+    saveGridData();
+    renderPlayerList();
+    renderTournamentPage('players');
+}
+
+function removeTournamentPlayer(id) {
+    if (!confirm('Удалить участника?')) return;
+
+    state.grid.players = state.grid.players.filter(p => p.id !== id);
+
+    state.grid.tables.forEach(table => {
+        table.players = table.players.filter(p => p.id !== id);
+    });
+
+    saveGridData();
+    renderPlayerList();
+    renderTables();
+    renderTournamentPage('players');
+}
+
+function clearTournamentPlayers() {
+    if (!confirm('Очистить всех участников и сетку?')) return;
+
+    state.grid.players = [];
+    state.grid.tables = [];
+    state.grid.gridCreated = false;
+    state.grid.eliminationOrder = [];
+    state.grid.tournamentEnded = false;
+
+    saveGridData();
+    renderPlayerList();
+    renderTables();
+    renderTournamentPage('players');
+}
+
+function createTournamentGrid() {
+    if ($('maxPlayersPerTable')) {
+        $('maxPlayersPerTable').value = state.grid.maxPlayersPerTable || state.tournament.maxPlayersPerTable || 6;
+    }
+
+    createGrid();
+    renderTournamentPage('players');
+}
+
+function loadTournamentPlayersFromFile() {
+    loadPlayersFromFile();
+
+    setTimeout(() => {
+        renderTournamentPage('players');
+    }, 800);
+}
+
+/************************************************************
+ * TOURNAMENT: POINTS
+ ************************************************************/
+
+function renderTournamentPoints() {
+    const box = $('tournamentContent');
+    if (!box) return;
+
+    box.innerHTML = `
+        <div class="tournament-panel">
+            <h3>🏆 Очки и призовые места</h3>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Общее количество очков турнира</label>
+                    <input type="number" id="tournamentTotalPoints" value="${Number(state.settings.totalPoints || 1000)}" min="100">
+                </div>
+
+                <div class="form-group">
+                    <label>Количество призовых мест</label>
+                    <input type="number" id="tournamentPrizePlacesCount" value="${state.settings.prizePlaces.length}" min="1" max="20" onchange="renderTournamentPrizeRows()">
+                </div>
+            </div>
+
+            <div class="tournament-table-wrap">
+                <table class="tournament-levels-table">
+                    <thead>
+                        <tr>
+                            <th>Место</th>
+                            <th>Процент очков</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tournamentPrizeRows"></tbody>
+                </table>
+            </div>
+
+            <div class="tournament-actions">
+                <button class="btn btn-primary" onclick="saveTournamentPoints()">💾 Сохранить очки</button>
+                <button class="btn btn-secondary" onclick="loadTournamentPointsPreset('small')">До 9 игроков</button>
+                <button class="btn btn-secondary" onclick="loadTournamentPointsPreset('medium')">12–18 игроков</button>
+                <button class="btn btn-secondary" onclick="loadTournamentPointsPreset('large')">19–30 игроков</button>
+            </div>
+        </div>
+    `;
+
+    renderTournamentPrizeRows();
+}
+
+function renderTournamentPrizeRows() {
+    const tbody = $('tournamentPrizeRows');
+    if (!tbody) return;
+
+    const count = parseInt($('tournamentPrizePlacesCount').value) || 3;
+
+    tbody.innerHTML = '';
+
+    for (let i = 1; i <= count; i++) {
+        const existing = state.settings.prizePlaces.find(p => Number(p.place) === i);
+
+        const tr = document.createElement('tr');
+
+        tr.innerHTML = `
+            <td><strong>${i} место</strong></td>
+            <td>
+                <input type="number" id="tournamentPrizePercent${i}" value="${existing ? existing.percentage : 0}" min="0" max="100" step="0.1"> %
+            </td>
+        `;
+
+        tbody.appendChild(tr);
+    }
+}
+
+function saveTournamentPoints() {
+    const count = parseInt($('tournamentPrizePlacesCount').value) || 3;
+
+    let sum = 0;
+    const places = [];
+
+    for (let i = 1; i <= count; i++) {
+        const percentage = parseFloat($(`tournamentPrizePercent${i}`).value) || 0;
+
+        places.push({
+            place: i,
+            percentage
+        });
+
+        sum += percentage;
+    }
+
+    if (Math.abs(sum - 100) > 0.1) {
+        alert(`Сумма процентов должна быть 100%. Сейчас: ${sum}%`);
+        return;
+    }
+
+    state.settings.totalPoints = parseInt($('tournamentTotalPoints').value) || 1000;
+    state.settings.prizePlaces = places;
+
+    saveSettingsData();
+    renderRating();
+
+    alert('Настройки очков сохранены');
+}
+
+function loadTournamentPointsPreset(type) {
+    if (type === 'small') {
+        state.settings.prizePlaces = [
+            { place: 1, percentage: 60 },
+            { place: 2, percentage: 30 },
+            { place: 3, percentage: 10 }
+        ];
+    }
+
+    if (type === 'medium') {
+        state.settings.prizePlaces = [
+            { place: 1, percentage: 45 },
+            { place: 2, percentage: 26 },
+            { place: 3, percentage: 16 },
+            { place: 4, percentage: 8 },
+            { place: 5, percentage: 5 }
+        ];
+    }
+
+    if (type === 'large') {
+        state.settings.prizePlaces = [
+            { place: 1, percentage: 42 },
+            { place: 2, percentage: 26 },
+            { place: 3, percentage: 16 },
+            { place: 4, percentage: 8 },
+            { place: 5, percentage: 5 },
+            { place: 6, percentage: 3 }
+        ];
+    }
+
+    renderTournamentPage('points');
+}
+
+/************************************************************
+ * TOURNAMENT: RULES
+ ************************************************************/
+
+function renderTournamentRules() {
+    const box = $('tournamentContent');
+    if (!box) return;
+
+    if (state.isAdmin) {
+        box.innerHTML = `
+            <div class="tournament-panel">
+                <h3>📜 Правила турнира</h3>
+
+                <p style="color:var(--text-muted); margin-bottom:15px;">
+                    Админ может редактировать правила. Гости смогут только читать.
+                </p>
+
+                <textarea class="tournament-rules-textarea" id="tournamentRulesEditor"></textarea>
+
+                <div class="tournament-actions">
+                    <button class="btn btn-primary" onclick="saveTournamentRules()">💾 Сохранить правила</button>
+                    <button class="btn btn-secondary" onclick="insertTournamentDefaultRules()">📋 Вставить пример</button>
+                </div>
+            </div>
+        `;
+
+        $('tournamentRulesEditor').value = state.rules.text || '';
+    } else {
+        box.innerHTML = `
+            <div class="tournament-panel">
+                <h3>📜 Правила турнира</h3>
+
+                ${
+                    state.rules.text
+                        ? `<div class="tournament-rules-view">${escapeHtml(state.rules.text)}</div>`
+                        : `<div class="tournament-empty">Правила пока не заполнены администратором</div>`
+                }
+            </div>
+        `;
+    }
+}
+
+function saveTournamentRules() {
+    if (!state.isAdmin) return;
+
+    state.rules.text = $('tournamentRulesEditor').value.trim();
+
+    localStorage.setItem('pokerRulesText', state.rules.text);
+
+    cloudSet('rules', {
+        text: state.rules.text,
+        updatedAt: new Date().toISOString()
+    });
+
+    alert('Правила сохранены');
+}
+
+function insertTournamentDefaultRules() {
+    $('tournamentRulesEditor').value = defaultRulesText();
+}
 
 /************************************************************
  * UI / NAVIGATION
@@ -1947,6 +2589,7 @@ function showPage(pageId) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
 
     ensureRulesPage();
+    ensureTournamentPage();
 
     const page = $(pageId);
 
@@ -1967,6 +2610,7 @@ function showPage(pageId) {
         renderLevelsTable();
     }
     if (pageId === 'rulesPage') renderRulesPage();
+    if (pageId === 'tournamentPage') renderTournamentPage();
 
     updateAdminUI();
 }
@@ -2047,16 +2691,15 @@ function resetAll() {
 
 function bindEvents() {
     document.addEventListener('click', e => {
-        const btn = e.target.closest('.nav-btn');
-        if (!btn) return;
+        const tab = e.target.closest('.tournament-tab');
+        if (!tab) return;
 
-        const page = btn.dataset.page;
-        if (!page) return;
+        const tabName = tab.dataset.tournamentTab;
+        if (!tabName) return;
 
         e.preventDefault();
-        showPage(page);
+        setTournamentTab(tabName);
     });
-
     $('startBtn').onclick = startTimer;
     $('pauseBtn').onclick = pauseTimer;
     $('resetBtn').onclick = resetTimer;
@@ -2198,6 +2841,7 @@ async function init() {
 
     addRulesButton();
     ensureRulesPage();
+    ensureTournamentPage();
     bindEvents();
     addPlayerFileButtons();
 
@@ -2250,5 +2894,28 @@ window.nextLevel = nextLevel;
 window.prevLevel = prevLevel;
 
 window.showPage = showPage;
+
+window.setTournamentTab = setTournamentTab;
+window.renderTournamentPage = renderTournamentPage;
+
+window.saveTournamentMainSettings = saveTournamentMainSettings;
+
+window.updateTournamentLevel = updateTournamentLevel;
+window.addTournamentLevel = addTournamentLevel;
+window.deleteTournamentLevel = deleteTournamentLevel;
+window.saveTournamentStructure = saveTournamentStructure;
+
+window.addTournamentPlayer = addTournamentPlayer;
+window.removeTournamentPlayer = removeTournamentPlayer;
+window.clearTournamentPlayers = clearTournamentPlayers;
+window.createTournamentGrid = createTournamentGrid;
+window.loadTournamentPlayersFromFile = loadTournamentPlayersFromFile;
+
+window.renderTournamentPrizeRows = renderTournamentPrizeRows;
+window.saveTournamentPoints = saveTournamentPoints;
+window.loadTournamentPointsPreset = loadTournamentPointsPreset;
+
+window.saveTournamentRules = saveTournamentRules;
+window.insertTournamentDefaultRules = insertTournamentDefaultRules;
 
 init();
