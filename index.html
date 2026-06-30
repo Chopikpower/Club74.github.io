@@ -3063,11 +3063,11 @@
 
         document.getElementById('saveLevelsBtn').addEventListener('click', () => {
             const template = state.templates[state.currentTemplate];
-            template.levelDuration = parseInt(document.getElementById('levelDuration').value) || 12;
+            template.levelDuration = parseInt(document.getElementById('levelDuration').value) || 15;
             template.breakDuration = parseInt(document.getElementById('breakDuration').value) || 5;
-            template.breakEveryNLevels = parseInt(document.getElementById('breakEveryNLevels').value) || 3;
-            template.bigBreakAfterLevel = parseInt(document.getElementById('bigBreakAfterLevel').value) || 0;
-            template.bigBreakDuration = parseInt(document.getElementById('bigBreakDuration').value) || 15;
+            template.breakEveryNLevels = parseInt(document.getElementById('breakEveryNLevels').value) || 4;
+            template.bigBreakAfterLevel = parseInt(document.getElementById('bigBreakAfterLevel').value) || 10;
+            template.bigBreakDuration = parseInt(document.getElementById('bigBreakDuration').value) || 20;
             
             applyTemplateToTimer();
             
