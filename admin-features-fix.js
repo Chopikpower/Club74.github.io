@@ -299,11 +299,11 @@
 
             if (guestGridVisible) {
                 toggleBtn.classList.add('grid-visible');
-                toggleBtn.textContent = '👁 Сетка гостям: Показана';
+                toggleBtn.textContent = '👁 Сетка: Показана';
                 toggleBtn.title = 'Нажми, чтобы скрыть сетку от гостей';
             } else {
                 toggleBtn.classList.add('grid-hidden');
-                toggleBtn.textContent = '🙈 Сетка гостям: Скрыта';
+                toggleBtn.textContent = '🙈 Сетка: Скрыта';
                 toggleBtn.title = 'Нажми, чтобы показать сетку гостям';
             }
         }
@@ -387,8 +387,8 @@
 
         alert(
             state.settings.guestGridVisible !== false
-                ? 'Сетка снова показана гостям'
-                : 'Сетка скрыта от гостей'
+                ? 'Сетка ВКЛ'
+                : 'Сетка ВЫКЛ'
         );
     }
 
@@ -459,7 +459,7 @@
             const guestGridVisible = state.settings.guestGridVisible !== false;
 
             if (!state.isAdmin && pageId === 'gridPage' && !guestGridVisible) {
-                alert('Сетка сейчас скрыта администратором');
+                alert('Сетка сейчас скрыта админом');
                 pageId = 'timerPage';
             }
 
