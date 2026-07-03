@@ -497,6 +497,7 @@ function moveToNextStage(baseTime = now()) {
     const t = currentTemplate();
     const totalLevels = t.levels.length;
 
+    // Если закончился перерыв — переходим к следующему уровню
     if (state.timer.isBreak) {
         const next = Number(state.timer.currentLevel) + 1;
 
@@ -512,85 +513,85 @@ function moveToNextStage(baseTime = now()) {
         return;
     }
 
+    // Если закончился последний уровень — завершаем турнир
     if (Number(state.timer.currentLevel) >= totalLevels) {
         finishTimer();
         return;
     }
 
-	if (shouldBigBreakAfterCurrentLevel()) {
-    	state.timer.isBreak = true;
-    	state.timer.breakType = 'big';
-    	setStageDuration(t.bigBreakDuration * 60, baseTime);
+    // Большой перерыв
+    if (shouldBigBreakAfterCurrentLevel()) {
+        state.timer.isBreak = true;
+        state.timer.breakType = 'big';
+        setStageDuration(t.bigBreakDuration * 60, baseTime);
+        return;
+    }
 
-    	// Запустить музыку большого перерыва
+    // Обычный перерыв
+    if (shouldRegularBreakAfterCurrentLevel()) {
+        state.timer.isBreak = true;
+        state.timer.breakType = 'regular';
+        setStageDuration(t.breakDuration * 60, baseTime);
+        return;
+    }
 
-    	return;
-	}
-
-	if (shouldRegularBreakAfterCurrentLevel()) {
-    	state.timer.isBreak = true;
-    	state.timer.breakType = 'regular';
-    	setStageDuration(t.breakDuration * 60, baseTime);
-
-    	// Запустить музыку перерыва
-
-    	return;
-	}
-
+    // Следующий уровень
     state.timer.currentLevel++;
     state.timer.isBreak = false;
     state.timer.breakType = null;
     setStageDuration(t.levelDuration * 60, baseTime);
 }
 
-    // Закончился уровень -> запускаем музыку начала перерыва
-    if (!state.timer.isBreak) {
-
-        if (shouldBigBreakAfterCurrentLevel()) {
-            playSound("bigBreakStart");
-        } else if (shouldRegularBreakAfterCurrentLevel()) {
-            playSound("breakStart");
-        } else {
-            playSound("levelEnd");
-        }
-
-    }
-
-    // Закончился перерыв -> начинается новый уровень
-    else {
-
-        // Всегда играет blind.mp3
-        playSound("levelEnd");
-
-    }
-}
-
 function syncTimer(silent = false) {
     if (!state.timer.isRunning || !state.timer.targetEndTime || state.timer.tournamentEnded) return;
 
-    const currentNow = now();
+    let currentNow = now();
     let changedStage = false;
 
     while (
         state.timer.isRunning &&
         !state.timer.tournamentEnded &&
         state.timer.targetEndTime &&
-        currentNow >= state.timer.targetEndTime
+        currentNow >= Number(state.timer.targetEndTime)
     ) {
-        const endedAt = state.timer.targetEndTime;
+        const endedAt = Number(state.timer.targetEndTime);
 
-moveToNextStage(endedAt);
-changedStage = true;
+        moveToNextStage(endedAt);
+        changedStage = true;
 
-if (!silent) {
-    if (state.timer.isBreak) {
-        if (state.timer.breakType === "big") {
-            playSound("bigBreakStart");
-        } else {
-            playSound("breakStart");
+        if (!silent && !state.timer.tournamentEnded) {
+            if (state.timer.isBreak) {
+                if (state.timer.breakType === 'big') {
+                    playSound('bigBreakStart');
+                } else {
+                    playSound('breakStart');
+                }
+            } else {
+                playSound('levelEnd');
+            }
         }
-    } else {
-        playSound("levelStart");
+
+        currentNow = now();
+    }
+
+    if (
+        state.timer.isRunning &&
+        !state.timer.tournamentEnded &&
+        state.timer.targetEndTime
+    ) {
+        state.timer.timeRemaining = Math.max(
+            0,
+            Math.ceil((Number(state.timer.targetEndTime) - now()) / 1000)
+        );
+
+        state.timer.elapsedTime = Math.max(
+            0,
+            Number(state.timer.totalLevelTime) - Number(state.timer.timeRemaining)
+        );
+    }
+
+    if (changedStage) {
+        saveTimerState();
     }
 }
 
@@ -828,26 +829,33 @@ function updateTimerDisplay() {
  ************************************************************/
 
 function playSound(type) {
-
-    let src = "";
+    let src = '';
 
     switch (type) {
-
-        case "levelEnd":
-            src = "https://chopikpower.github.io/Club74.github.io/sound/blind.mp3";
+        case 'levelEnd':
+        case 'levelStart':
+            src = state.settings.customLevelSound || state.settings.defaultBlindSound;
             break;
 
-        case "breakStart":
-            src = "https://chopikpower.github.io/Club74.github.io/sound/break.mp3";
+        case 'breakStart':
+            src = state.settings.customBreakSound || state.settings.defaultBreakSound;
             break;
 
-        case "bigBreakStart":
-            src = "https://chopikpower.github.io/Club74.github.io/sound/bigbreak.mp3";
+        case 'bigBreakStart':
+            src = state.settings.customBigBreakSound || state.settings.defaultBigBreakSound;
             break;
 
         default:
             return;
     }
+
+    const audio = new Audio(src);
+    audio.volume = (Number(state.settings.volume) || 70) / 100;
+    audio.play().catch(() => {});
+}
+
+function playDefaultSound(src) {
+    if (!src) return;
 
     const audio = new Audio(src);
     audio.volume = (Number(state.settings.volume) || 70) / 100;
