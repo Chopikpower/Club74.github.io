@@ -543,8 +543,6 @@ function moveToNextStage(baseTime = now()) {
     setStageDuration(t.levelDuration * 60, baseTime);
 }
 
-function playStageSound() {
-
     // Закончился уровень -> запускаем музыку начала перерыва
     if (!state.timer.isBreak) {
 
@@ -581,15 +579,19 @@ function syncTimer(silent = false) {
     ) {
         const endedAt = state.timer.targetEndTime;
 
- moveToNextStage(endedAt);
+moveToNextStage(endedAt);
+changedStage = true;
 
-    if (state.timer.isRunning && !state.timer.tournamentEnded && state.timer.targetEndTime) {
-        const remainingMs = Math.max(0, state.timer.targetEndTime - now());
-        state.timer.timeRemaining = Math.ceil(remainingMs / 1000);
-        state.timer.elapsedTime = Math.max(0, state.timer.totalLevelTime - state.timer.timeRemaining);
+if (!silent) {
+    if (state.timer.isBreak) {
+        if (state.timer.breakType === "big") {
+            playSound("bigBreakStart");
+        } else {
+            playSound("breakStart");
+        }
+    } else {
+        playSound("levelStart");
     }
-
-    if (changedStage) saveTimerState();
 }
 
 function timerTick() {
