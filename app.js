@@ -523,7 +523,6 @@ function moveToNextStage(baseTime = now()) {
     	setStageDuration(t.bigBreakDuration * 60, baseTime);
 
     	// Запустить музыку большого перерыва
-    	playSound("bigBreakStart");
 
     	return;
 	}
@@ -534,7 +533,6 @@ function moveToNextStage(baseTime = now()) {
     	setStageDuration(t.breakDuration * 60, baseTime);
 
     	// Запустить музыку перерыва
-    	playSound("breakStart");
 
     	return;
 	}
@@ -585,9 +583,21 @@ function syncTimer(silent = false) {
 
         if (!silent) playStageSound();
 
-        moveToNextStage(endedAt);
-        changedStage = true;
+ moveToNextStage(endedAt);
+
+if (!silent) {
+
+    if (state.timer.isBreak) {
+        playSound(
+            state.timer.breakType === "big"
+                ? "bigBreakStart"
+                : "breakStart"
+        );
+    } else {
+        playSound("levelEnd");
     }
+
+}
 
     if (state.timer.isRunning && !state.timer.tournamentEnded && state.timer.targetEndTime) {
         const remainingMs = Math.max(0, state.timer.targetEndTime - now());
@@ -862,11 +872,29 @@ function playSound(type) {
             break;
     }
 
-    if (!src) return;
+function playSound(type) {
+
+    let src = null;
+
+    switch(type){
+
+        case "levelEnd":
+            src = state.settings.defaultBlindSound || "sound/blind.mp3";
+            break;
+
+        case "breakStart":
+            src = state.settings.defaultBreakSound || "sound/break.mp3";
+            break;
+
+        case "bigBreakStart":
+            src = state.settings.defaultBigBreakSound || "sound/bigbreak.mp3";
+            break;
+    }
 
     const audio = new Audio(src);
-    audio.volume = Number(state.settings.volume) / 100;
-    audio.play().catch(() => {});
+    audio.volume = (Number(state.settings.volume) || 70) / 100;
+    audio.play().catch(console.error);
+
 }
 
 /************************************************************
