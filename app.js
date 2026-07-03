@@ -725,3 +725,308 @@
     }
 
 })();
+
+/************************************************************
+ * GUEST TIMER SYNC FIX
+ * Исправляет работу таймера у гостей.
+ * Вставить В САМЫЙ НИЗ файла после init();
+ ************************************************************/
+
+(function () {
+    if (window.__GUEST_TIMER_SYNC_FIX__) return;
+    window.__GUEST_TIMER_SYNC_FIX__ = true;
+
+    console.log('Guest Timer Sync Fix loaded');
+
+    let guestTimerDisplayInterval = null;
+    let guestCloudPollingInterval = null;
+    let lastCloudTimerUpdatedAt = null;
+
+    function safeUpdateGuestTimerDisplay() {
+        try {
+            if (typeof state === 'undefined') return;
+            if (!state.timer) return;
+
+            if (state.timer.isRunning && !state.timer.tournamentEnded) {
+                if (typeof syncTimer === 'function') {
+                    syncTimer(true);
+                }
+            }
+
+            if (typeof updateTimerDisplay === 'function') {
+                updateTimerDisplay();
+            }
+        } catch (err) {
+            console.error('Guest timer display error:', err);
+        }
+    }
+
+    function startGuestTimerDisplayInterval() {
+        if (guestTimerDisplayInterval) {
+            clearInterval(guestTimerDisplayInterval);
+        }
+
+        guestTimerDisplayInterval = setInterval(() => {
+            safeUpdateGuestTimerDisplay();
+        }, 500);
+
+        safeUpdateGuestTimerDisplay();
+
+        console.log('Guest timer display interval started');
+    }
+
+    async function loadTimerFromCloudForGuest() {
+        try {
+            if (typeof state === 'undefined') return;
+            if (state.isAdmin) return;
+
+            if (!SUPABASE_URL || !SUPABASE_KEY) return;
+
+            if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+                console.warn('Supabase SDK не подключён. Гостевой таймер может работать только из localStorage.');
+                return;
+            }
+
+            if (!supabaseClient) {
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+
+            const { data, error } = await supabaseClient
+                .from('app_state')
+                .select('key,value,updated_at')
+                .eq('key', 'timer')
+                .maybeSingle();
+
+            if (error) {
+                console.warn('Guest timer cloud read error:', error);
+                return;
+            }
+
+            if (!data || !data.value) return;
+
+            if (lastCloudTimerUpdatedAt && data.updated_at === lastCloudTimerUpdatedAt) {
+                return;
+            }
+
+            lastCloudTimerUpdatedAt = data.updated_at;
+
+            if (typeof applyTimerData === 'function') {
+                applyTimerData(data.value);
+            }
+
+            if (typeof saveLocal === 'function') {
+                saveLocal('pokerTimerState', makeTimerData());
+            }
+
+            if (typeof syncTimer === 'function') {
+                syncTimer(true);
+            }
+
+            if (typeof updateTimerDisplay === 'function') {
+                updateTimerDisplay();
+            }
+
+            if (typeof restartTimerIntervalIfNeeded === 'function') {
+                restartTimerIntervalIfNeeded();
+            }
+
+            console.log('Guest timer synced from cloud:', data.value);
+        } catch (err) {
+            console.error('Guest timer cloud sync failed:', err);
+        }
+    }
+
+    function startGuestCloudPolling() {
+        if (guestCloudPollingInterval) {
+            clearInterval(guestCloudPollingInterval);
+        }
+
+        guestCloudPollingInterval = setInterval(() => {
+            if (typeof state !== 'undefined' && !state.isAdmin) {
+                loadTimerFromCloudForGuest();
+            }
+        }, 2000);
+
+        loadTimerFromCloudForGuest();
+
+        console.log('Guest cloud polling started');
+    }
+
+    function patchApplyCloudRow() {
+        if (typeof applyCloudRow !== 'function') return;
+        if (window.__APPLY_CLOUD_ROW_PATCHED_FOR_GUEST__) return;
+
+        window.__APPLY_CLOUD_ROW_PATCHED_FOR_GUEST__ = true;
+
+        const originalApplyCloudRow = applyCloudRow;
+
+        applyCloudRow = function (row) {
+            originalApplyCloudRow(row);
+
+            try {
+                if (row && row.key === 'timer') {
+                    if (typeof syncTimer === 'function') {
+                        syncTimer(true);
+                    }
+
+                    if (typeof updateTimerDisplay === 'function') {
+                        updateTimerDisplay();
+                    }
+
+                    startGuestTimerDisplayInterval();
+                }
+            } catch (err) {
+                console.error('Patched applyCloudRow timer error:', err);
+            }
+        };
+
+        console.log('applyCloudRow patched for guest timer');
+    }
+
+    function patchUpdateAdminUI() {
+        if (typeof updateAdminUI !== 'function') return;
+        if (window.__UPDATE_ADMIN_UI_PATCHED_FOR_GUEST__) return;
+
+        window.__UPDATE_ADMIN_UI_PATCHED_FOR_GUEST__ = true;
+
+        const originalUpdateAdminUI = updateAdminUI;
+
+        updateAdminUI = function () {
+            originalUpdateAdminUI();
+
+            try {
+                startGuestTimerDisplayInterval();
+
+                if (typeof state !== 'undefined' && !state.isAdmin) {
+                    startGuestCloudPolling();
+                }
+            } catch (err) {
+                console.error('Patched updateAdminUI error:', err);
+            }
+        };
+
+        console.log('updateAdminUI patched for guest timer');
+    }
+
+    function patchLoginLogoutButtons() {
+        const loginBtn = document.getElementById('confirmLoginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+
+        if (loginBtn && loginBtn.dataset.guestTimerPatch !== '1') {
+            loginBtn.dataset.guestTimerPatch = '1';
+
+            loginBtn.addEventListener('click', () => {
+                setTimeout(() => {
+                    startGuestTimerDisplayInterval();
+
+                    if (typeof state !== 'undefined' && !state.isAdmin) {
+                        startGuestCloudPolling();
+                    }
+                }, 300);
+            });
+        }
+
+        if (logoutBtn && logoutBtn.dataset.guestTimerPatch !== '1') {
+            logoutBtn.dataset.guestTimerPatch = '1';
+
+            logoutBtn.addEventListener('click', () => {
+                setTimeout(() => {
+                    startGuestTimerDisplayInterval();
+                    startGuestCloudPolling();
+                }, 300);
+            });
+        }
+    }
+
+    function patchStartPauseResetForAdminCloud() {
+        /*
+         * Этот блок нужен, чтобы после действий админа гости быстрее увидели изменения.
+         * Основная синхронизация всё равно идёт через saveTimerState().
+         */
+
+        if (window.__ADMIN_TIMER_ACTIONS_PATCHED__) return;
+        window.__ADMIN_TIMER_ACTIONS_PATCHED__ = true;
+
+        function wrapTimerAction(name) {
+            if (typeof window[name] !== 'function') return;
+
+            const original = window[name];
+
+            window[name] = function () {
+                const result = original.apply(this, arguments);
+
+                setTimeout(() => {
+                    try {
+                        if (typeof saveTimerState === 'function') {
+                            saveTimerState();
+                        }
+
+                        if (typeof updateTimerDisplay === 'function') {
+                            updateTimerDisplay();
+                        }
+                    } catch (err) {
+                        console.error('Timer action patch error:', err);
+                    }
+                }, 100);
+
+                return result;
+            };
+        }
+
+        wrapTimerAction('startTimer');
+        wrapTimerAction('pauseTimer');
+        wrapTimerAction('resetTimer');
+        wrapTimerAction('nextLevel');
+        wrapTimerAction('prevLevel');
+
+        console.log('Admin timer actions patched');
+    }
+
+    function fixGuestTimerNow() {
+        try {
+            patchApplyCloudRow();
+            patchUpdateAdminUI();
+            patchLoginLogoutButtons();
+            patchStartPauseResetForAdminCloud();
+
+            startGuestTimerDisplayInterval();
+
+            if (typeof state !== 'undefined' && !state.isAdmin) {
+                startGuestCloudPolling();
+            }
+
+            if (typeof syncTimer === 'function') {
+                syncTimer(true);
+            }
+
+            if (typeof updateTimerDisplay === 'function') {
+                updateTimerDisplay();
+            }
+
+            console.log('Guest timer fix applied');
+        } catch (err) {
+            console.error('Guest timer fix error:', err);
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            fixGuestTimerNow();
+            setTimeout(fixGuestTimerNow, 500);
+            setTimeout(fixGuestTimerNow, 1500);
+            setTimeout(fixGuestTimerNow, 3000);
+        });
+    } else {
+        fixGuestTimerNow();
+        setTimeout(fixGuestTimerNow, 500);
+        setTimeout(fixGuestTimerNow, 1500);
+        setTimeout(fixGuestTimerNow, 3000);
+    }
+
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            fixGuestTimerNow();
+            loadTimerFromCloudForGuest();
+        }
+    });
+})();
