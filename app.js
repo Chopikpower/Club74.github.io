@@ -581,23 +581,7 @@ function syncTimer(silent = false) {
     ) {
         const endedAt = state.timer.targetEndTime;
 
-        if (!silent) playStageSound();
-
  moveToNextStage(endedAt);
-
-if (!silent) {
-
-    if (state.timer.isBreak) {
-        playSound(
-            state.timer.breakType === "big"
-                ? "bigBreakStart"
-                : "breakStart"
-        );
-    } else {
-        playSound("levelEnd");
-    }
-
-}
 
     if (state.timer.isRunning && !state.timer.tournamentEnded && state.timer.targetEndTime) {
         const remainingMs = Math.max(0, state.timer.targetEndTime - now());
@@ -842,59 +826,30 @@ function updateTimerDisplay() {
  ************************************************************/
 
 function playSound(type) {
-    let src = null;
+
+    let src = "";
 
     switch (type) {
 
-        // Конец уровня
         case "levelEnd":
-            src = state.settings.defaultBlindSound;
-            break;
-
-        // Начало обычного перерыва
-        case "breakStart":
-            src = "sound/break.mp3";
-            break;
-
-        // Начало большого перерыва
-        case "bigBreakStart":
-            src = "sound/bigbreak.mp3";
-            break;
-
-        // Конец обычного перерыва
-        case "breakEnd":
-            src = state.settings.defaultBreakSound;
-            break;
-
-        // Конец большого перерыва
-        case "bigBreakEnd":
-            src = state.settings.defaultBigBreakSound;
-            break;
-    }
-
-function playSound(type) {
-
-    let src = null;
-
-    switch(type){
-
-        case "levelEnd":
-            src = state.settings.defaultBlindSound || "https://chopikpower.github.io/Club74.github.io/sound/blind.mp3";
+            src = "https://chopikpower.github.io/Club74.github.io/sound/blind.mp3";
             break;
 
         case "breakStart":
-            src = state.settings.defaultBreakSound || "https://chopikpower.github.io/Club74.github.io/sound/break.mp3";
+            src = "https://chopikpower.github.io/Club74.github.io/sound/break.mp3";
             break;
 
         case "bigBreakStart":
-            src = state.settings.defaultBigBreakSound || "https://chopikpower.github.io/Club74.github.io/sound/bigbreak.mp3";
+            src = "https://chopikpower.github.io/Club74.github.io/sound/bigbreak.mp3";
             break;
+
+        default:
+            return;
     }
 
     const audio = new Audio(src);
     audio.volume = (Number(state.settings.volume) || 70) / 100;
-    audio.play().catch(console.error);
-
+    audio.play().catch(() => {});
 }
 
 /************************************************************
