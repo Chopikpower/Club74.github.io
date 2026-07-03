@@ -517,19 +517,27 @@ function moveToNextStage(baseTime = now()) {
         return;
     }
 
-    if (shouldBigBreakAfterCurrentLevel()) {
-        state.timer.isBreak = true;
-        state.timer.breakType = 'big';
-        setStageDuration(t.bigBreakDuration * 60, baseTime);
-        return;
-    }
+	if (shouldBigBreakAfterCurrentLevel()) {
+    	state.timer.isBreak = true;
+    	state.timer.breakType = 'big';
+    	setStageDuration(t.bigBreakDuration * 60, baseTime);
 
-    if (shouldRegularBreakAfterCurrentLevel()) {
-        state.timer.isBreak = true;
-        state.timer.breakType = 'regular';
-        setStageDuration(t.breakDuration * 60, baseTime);
-        return;
-    }
+    	// Запустить музыку большого перерыва
+    	playSound("bigBreakStart");
+
+    	return;
+	}
+
+	if (shouldRegularBreakAfterCurrentLevel()) {
+    	state.timer.isBreak = true;
+    	state.timer.breakType = 'regular';
+    	setStageDuration(t.breakDuration * 60, baseTime);
+
+    	// Запустить музыку перерыва
+    	playSound("breakStart");
+
+    	return;
+	}
 
     state.timer.currentLevel++;
     state.timer.isBreak = false;
@@ -538,10 +546,26 @@ function moveToNextStage(baseTime = now()) {
 }
 
 function playStageSound() {
-    if (state.timer.isBreak) {
-        playSound(state.timer.breakType === 'big' ? 'bigBreakEnd' : 'breakEnd');
-    } else {
-        playSound('levelEnd');
+
+    // Закончился уровень -> запускаем музыку начала перерыва
+    if (!state.timer.isBreak) {
+
+        if (shouldBigBreakAfterCurrentLevel()) {
+            playSound("bigBreakStart");
+        } else if (shouldRegularBreakAfterCurrentLevel()) {
+            playSound("breakStart");
+        } else {
+            playSound("levelEnd");
+        }
+
+    }
+
+    // Закончился перерыв -> начинается новый уровень
+    else {
+
+        // Всегда играет blind.mp3
+        playSound("levelEnd");
+
     }
 }
 
@@ -810,23 +834,39 @@ function updateTimerDisplay() {
 function playSound(type) {
     let src = null;
 
-    if (type === 'levelEnd') src = state.settings.defaultBlindSound;
-    if (type === 'breakEnd') src = state.settings.defaultBreakSound;
-    if (type === 'bigBreakEnd') src = state.settings.defaultBigBreakSound;
+    switch (type) {
+
+        // Конец уровня
+        case "levelEnd":
+            src = state.settings.defaultBlindSound;
+            break;
+
+        // Начало обычного перерыва
+        case "breakStart":
+            src = "sound/break.mp3";
+            break;
+
+        // Начало большого перерыва
+        case "bigBreakStart":
+            src = "sound/bigbreak.mp3";
+            break;
+
+        // Конец обычного перерыва
+        case "breakEnd":
+            src = state.settings.defaultBreakSound;
+            break;
+
+        // Конец большого перерыва
+        case "bigBreakEnd":
+            src = state.settings.defaultBigBreakSound;
+            break;
+    }
 
     if (!src) return;
 
     const audio = new Audio(src);
     audio.volume = Number(state.settings.volume) / 100;
     audio.play().catch(() => {});
-}
-
-function playDefaultSound(src) {
-    const audio = new Audio(src);
-    audio.volume = Number(state.settings.volume) / 100;
-    audio.play().catch(() => {
-        alert('Не удалось воспроизвести файл: ' + src);
-    });
 }
 
 /************************************************************
