@@ -84,9 +84,9 @@ const state = {
         adminPassword: 'secret',
         primaryColor: '#00bfff',
         volume: 70,
-        defaultBlindSound: 'sound/blind.mp3',
-        defaultBreakSound: 'sound/break.mp3',
-        defaultBigBreakSound: 'sound/bigbreak.mp3',
+        defaultBlindSound: 'https://chopikpower.github.io/Club74.github.io/sound/blind.mp3',
+        defaultBreakSound: 'https://chopikpower.github.io/Club74.github.io/sound/break.mp3',
+        defaultBigBreakSound: 'https://chopikpower.github.io/Club74.github.io/sound/bigbreak.mp3',
         customLevelSound: null,
         customBreakSound: null,
         customBigBreakSound: null,
@@ -879,15 +879,15 @@ function playSound(type) {
     switch(type){
 
         case "levelEnd":
-            src = state.settings.defaultBlindSound || "sound/blind.mp3";
+            src = state.settings.defaultBlindSound || "https://chopikpower.github.io/Club74.github.io/sound/blind.mp3";
             break;
 
         case "breakStart":
-            src = state.settings.defaultBreakSound || "sound/break.mp3";
+            src = state.settings.defaultBreakSound || "https://chopikpower.github.io/Club74.github.io/sound/break.mp3";
             break;
 
         case "bigBreakStart":
-            src = state.settings.defaultBigBreakSound || "sound/bigbreak.mp3";
+            src = state.settings.defaultBigBreakSound || "https://chopikpower.github.io/Club74.github.io/sound/bigbreak.mp3";
             break;
     }
 
