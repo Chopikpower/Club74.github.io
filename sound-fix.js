@@ -1,63 +1,63 @@
 /************************************************************
- * SOUND FIX FOR POKER TIMER
+ * STABLE SOUND FIX FOR POKER TIMER
  *
- * Требования:
  * ✅ blind.mp3 — при начале каждого уровня
  * ✅ break.mp3 — при начале обычного перерыва
  * ✅ bigbreak.mp3 — при начале большого перерыва
- * ✅ Без дублирования вызовов
- * ✅ Работает у администратора и гостя
+ * ✅ Без дублей
+ * ✅ Работает у админа и гостя
+ * ✅ Работает при авто-переходе
+ * ✅ Работает при кнопке "Вперёд"
+ * ✅ При "Назад" звук НЕ играет
  *
- * Подключать ПОСЛЕ app.js:
- * <script src="app.js"></script>
+ * Подключать ПОСЛЕ app.js и после остальных фиксов:
  * <script src="sound-fix.js"></script>
  ************************************************************/
 
 (function () {
-    if (window.__POKER_TIMER_SOUND_FIX_LOADED__) return;
-    window.__POKER_TIMER_SOUND_FIX_LOADED__ = true;
+    if (window.__STABLE_POKER_SOUND_FIX__) return;
+    window.__STABLE_POKER_SOUND_FIX__ = true;
 
-    console.log('Poker Timer sound fix loaded');
-
-    /************************************************************
-     * SAFETY
-     ************************************************************/
+    console.log('Stable Poker Sound Fix loaded');
 
     if (typeof state === 'undefined') {
-        console.error('sound-fix.js: state не найден. Проверь, что sound-fix.js подключён после app.js');
+        console.error('sound-fix.js: state не найден. Файл должен быть подключён после app.js');
         return;
     }
 
-    const SOUND_PATHS = {
-        levelStart: 'https://chopikpower.github.io/Club74.github.io/sound/blind.mp3',
-        breakStart: 'https://chopikpower.github.io/Club74.github.io/sound/break.mp3',
-        bigBreakStart: 'https://chopikpower.github.io/Club74.github.io/sound/bigbreak.mp3'
+    /************************************************************
+     * SETTINGS
+     ************************************************************/
+
+    const DEFAULT_SOUNDS = {
+        levelStart: 'sound/blind.mp3',
+        breakStart: 'sound/break.mp3',
+        bigBreakStart: 'sound/bigbreak.mp3'
     };
 
-    let lastPlayedStageSoundKey = null;
+    let lastPlayedStageKey = null;
     let audioUnlocked = false;
 
     /************************************************************
      * AUDIO UNLOCK
      *
-     * Важно:
-     * Браузеры запрещают звук без действия пользователя.
-     * Поэтому у гостя звук гарантированно заработает после любого клика/тапа
-     * по странице.
+     * Браузеры часто запрещают звук без клика пользователя.
+     * Поэтому после любого клика/тапа звук разблокируется.
      ************************************************************/
 
     function unlockAudio() {
         if (audioUnlocked) return;
 
-        audioUnlocked = true;
-
         try {
-            const audio = new Audio(SOUND_PATHS.levelStart);
+            const audio = new Audio(DEFAULT_SOUNDS.levelStart);
             audio.volume = 0;
+            audio.muted = true;
+
             audio.play()
                 .then(() => {
                     audio.pause();
                     audio.currentTime = 0;
+                    audioUnlocked = true;
                     console.log('Audio unlocked');
                 })
                 .catch(() => {
@@ -68,12 +68,12 @@
         }
     }
 
-    document.addEventListener('click', unlockAudio, { once: false });
-    document.addEventListener('touchstart', unlockAudio, { once: false });
-    document.addEventListener('keydown', unlockAudio, { once: false });
+    document.addEventListener('click', unlockAudio);
+    document.addEventListener('touchstart', unlockAudio);
+    document.addEventListener('keydown', unlockAudio);
 
     /************************************************************
-     * SOUND CORE
+     * SOUND HELPERS
      ************************************************************/
 
     function getVolume() {
@@ -88,15 +88,21 @@
 
     function getSoundSrc(type) {
         if (type === 'levelStart') {
-            return state.settings?.customLevelSound || state.settings?.defaultBlindSound || SOUND_PATHS.levelStart;
+            return state.settings?.customLevelSound ||
+                state.settings?.defaultBlindSound ||
+                DEFAULT_SOUNDS.levelStart;
         }
 
         if (type === 'breakStart') {
-            return state.settings?.customBreakSound || state.settings?.defaultBreakSound || SOUND_PATHS.breakStart;
+            return state.settings?.customBreakSound ||
+                state.settings?.defaultBreakSound ||
+                DEFAULT_SOUNDS.breakStart;
         }
 
         if (type === 'bigBreakStart') {
-            return state.settings?.customBigBreakSound || state.settings?.defaultBigBreakSound || SOUND_PATHS.bigBreakStart;
+            return state.settings?.customBigBreakSound ||
+                state.settings?.defaultBigBreakSound ||
+                DEFAULT_SOUNDS.bigBreakStart;
         }
 
         return null;
@@ -110,11 +116,12 @@
         try {
             const audio = new Audio(src);
             audio.volume = getVolume();
+
             audio.play().catch(err => {
-                console.warn('Звук заблокирован браузером или файл не найден:', src, err);
+                console.warn('Звук не проиграл. Возможно, браузер заблокировал autoplay или файл не найден:', src, err);
             });
         } catch (err) {
-            console.warn('Ошибка воспроизведения звука:', err);
+            console.warn('Ошибка запуска звука:', err);
         }
     };
 
@@ -124,6 +131,7 @@
         try {
             const audio = new Audio(src);
             audio.volume = getVolume();
+
             audio.play().catch(() => {
                 alert('Не удалось воспроизвести файл: ' + src);
             });
@@ -133,13 +141,11 @@
     };
 
     /************************************************************
-     * STAGE KEY
-     *
-     * Нужен, чтобы звук не повторялся дважды.
+     * STAGE DETECTION
      ************************************************************/
 
-    function getCurrentStageSoundType() {
-        if (state.timer.tournamentEnded) return null;
+    function getStageSoundType() {
+        if (!state.timer || state.timer.tournamentEnded) return null;
 
         if (state.timer.isBreak) {
             if (state.timer.breakType === 'big') {
@@ -152,49 +158,68 @@
         return 'levelStart';
     }
 
-    function getCurrentStageSoundKey() {
-        if (state.timer.tournamentEnded) return null;
+    function getStageKey() {
+        if (!state.timer || state.timer.tournamentEnded) return null;
 
-        const type = getCurrentStageSoundType();
+        const type = getStageSoundType();
 
         if (!type) return null;
 
+        /**
+         * tournamentStartedAt нужен, чтобы после сброса и нового старта
+         * уровень 1 снова мог проиграть blind.mp3.
+         *
+         * targetEndTime НЕ используем, иначе после паузы/продолжения
+         * звук мог бы повторяться.
+         */
         return [
+            state.timer.tournamentStartedAt || 'not-started',
             type,
             Number(state.timer.currentLevel || 1),
-            state.timer.isBreak ? String(state.timer.breakType || 'regular') : 'level',
-            Number(state.timer.targetEndTime || 0),
-            Number(state.timer.totalLevelTime || 0)
+            state.timer.isBreak ? String(state.timer.breakType || 'regular') : 'level'
         ].join(':');
     }
 
-    function playCurrentStageStartSoundOnce() {
-        const type = getCurrentStageSoundType();
-        const key = getCurrentStageSoundKey();
+    function playStageStartSoundOnce() {
+        const type = getStageSoundType();
+        const key = getStageKey();
 
         if (!type || !key) return;
 
-        if (lastPlayedStageSoundKey === key) {
+        if (lastPlayedStageKey === key) {
             return;
         }
 
-        lastPlayedStageSoundKey = key;
+        lastPlayedStageKey = key;
 
         playSound(type);
 
-        console.log('Stage sound played:', type, key);
+        console.log('Sound played:', type, key);
+    }
+
+    function markCurrentStageAsAlreadyPlayed() {
+        lastPlayedStageKey = getStageKey();
+    }
+
+    function resetSoundMemory() {
+        lastPlayedStageKey = null;
     }
 
     /************************************************************
      * OVERRIDE syncTimer
      *
-     * Главное исправление:
-     * Сначала переходим на новую стадию,
+     * ВАЖНО:
+     * Сначала переводим таймер на новую стадию,
      * потом играем звук НАЧАЛА новой стадии.
      ************************************************************/
 
     window.syncTimer = function (silent = false) {
-        if (!state.timer.isRunning || !state.timer.targetEndTime || state.timer.tournamentEnded) {
+        if (
+            !state.timer ||
+            !state.timer.isRunning ||
+            !state.timer.targetEndTime ||
+            state.timer.tournamentEnded
+        ) {
             return;
         }
 
@@ -213,7 +238,7 @@
             changedStage = true;
 
             if (!silent && !state.timer.tournamentEnded) {
-                playCurrentStageStartSoundOnce();
+                playStageStartSoundOnce();
             }
 
             currentNow = now();
@@ -233,7 +258,7 @@
             );
         }
 
-        if (changedStage) {
+        if (changedStage && typeof saveTimerState === 'function') {
             saveTimerState();
         }
     };
@@ -248,13 +273,31 @@
     };
 
     /************************************************************
+     * OVERRIDE INTERVALS
+     ************************************************************/
+
+    window.startTimerInterval = function () {
+        clearInterval(state.timer.interval);
+
+        state.timer.interval = setInterval(() => {
+            syncTimer(false);
+            updateTimerDisplay();
+        }, 500);
+    };
+
+    window.restartTimerIntervalIfNeeded = function () {
+        clearInterval(state.timer.interval);
+
+        if (state.timer.isRunning) {
+            startTimerInterval();
+        }
+    };
+
+    /************************************************************
      * OVERRIDE startTimer
      *
-     * При старте турнира/после паузы:
-     * если это начало уровня — blind.mp3.
-     *
-     * Если это продолжение после паузы, звук НЕ повторяем,
-     * потому что ключ стадии тот же.
+     * При первом старте уровня играет blind.mp3.
+     * При продолжении после паузы звук НЕ повторяется.
      ************************************************************/
 
     window.startTimer = function () {
@@ -270,14 +313,34 @@
         saveTimerState();
         updateTimerDisplay();
 
-        playCurrentStageStartSoundOnce();
+        playStageStartSoundOnce();
+    };
+
+    /************************************************************
+     * OVERRIDE pauseTimer
+     *
+     * На паузе звук не трогаем.
+     ************************************************************/
+
+    window.pauseTimer = function () {
+        if (!state.timer.isRunning) return;
+
+        syncTimer(true);
+
+        state.timer.isRunning = false;
+        state.timer.isPaused = true;
+        state.timer.targetEndTime = null;
+
+        clearInterval(state.timer.interval);
+
+        saveTimerState();
+        updateTimerDisplay();
     };
 
     /************************************************************
      * OVERRIDE nextLevel
      *
-     * При ручном переходе вперёд звук тоже должен соответствовать
-     * началу новой стадии.
+     * При ручном "Вперёд" звук играет для новой стадии.
      ************************************************************/
 
     window.nextLevel = function () {
@@ -302,84 +365,154 @@
         updateTimerDisplay();
 
         if (!state.timer.tournamentEnded) {
-            playCurrentStageStartSoundOnce();
+            playStageStartSoundOnce();
         }
     };
 
     /************************************************************
      * OVERRIDE prevLevel
      *
-     * Назад звук не играем.
-     * Также сбрасываем ключ, чтобы при последующем старте звук мог сыграть.
+     * При "Назад" звук НЕ играем.
+     * Но память звука сбрасываем, чтобы если потом снова нажать "Вперёд",
+     * звук новой стадии снова сработал.
      ************************************************************/
 
-    const originalPrevLevel = window.prevLevel || prevLevel;
-
     window.prevLevel = function () {
-        originalPrevLevel();
-        lastPlayedStageSoundKey = null;
+        const t = currentTemplate();
+
+        if (state.timer.currentLevel <= 1 && !state.timer.isBreak) {
+            alert('Это первый уровень, назад перемотать нельзя');
+            return;
+        }
+
+        clearInterval(state.timer.interval);
+
+        if (state.timer.isBreak) {
+            state.timer.isBreak = false;
+            state.timer.breakType = null;
+        } else {
+            state.timer.currentLevel = Math.max(1, Number(state.timer.currentLevel) - 1);
+        }
+
+        state.timer.isRunning = false;
+        state.timer.isPaused = false;
+        state.timer.tournamentEnded = false;
+        state.timer.totalLevelTime = t.levelDuration * 60;
+        state.timer.timeRemaining = state.timer.totalLevelTime;
+        state.timer.elapsedTime = 0;
+        state.timer.targetEndTime = null;
+
+        resetSoundMemory();
+
+        saveTimerState();
+        updateTimerDisplay();
     };
 
     /************************************************************
      * OVERRIDE resetTimer
      *
-     * После сброса звук не играет.
-     * Ключ звука сбрасывается.
+     * Сброс — без звука.
      ************************************************************/
 
-    const originalResetTimer = window.resetTimer || resetTimer;
-
     window.resetTimer = function () {
-        originalResetTimer();
-        lastPlayedStageSoundKey = null;
+        const t = currentTemplate();
+
+        clearInterval(state.timer.interval);
+
+        Object.assign(state.timer, {
+            currentLevel: 1,
+            timeRemaining: t.levelDuration * 60,
+            totalLevelTime: t.levelDuration * 60,
+            elapsedTime: 0,
+            isRunning: false,
+            isPaused: false,
+            isBreak: false,
+            breakType: null,
+            tournamentEnded: false,
+            tournamentStartedAt: null,
+            targetEndTime: null
+        });
+
+        resetSoundMemory();
+
+        saveTimerState();
+        updateTimerDisplay();
     };
 
     /************************************************************
-     * GUEST REALTIME SOUND
+     * GUEST CLOUD SOUND
      *
-     * У гостя звук должен сработать, когда админ запускает таймер
-     * или вручную переводит уровень.
-     *
-     * Но НЕ должен играть при первичной загрузке страницы.
+     * Гость получает изменение таймера из Supabase.
+     * Если админ запустил таймер или перевёл стадию —
+     * у гостя тоже играет нужный звук.
      ************************************************************/
 
-    const originalApplyCloudRow = window.applyCloudRow || applyCloudRow;
+    if (typeof applyCloudRow === 'function' && !window.__STABLE_SOUND_CLOUD_PATCHED__) {
+        window.__STABLE_SOUND_CLOUD_PATCHED__ = true;
 
-    window.applyCloudRow = function (row) {
-        const beforeKey = getCurrentStageSoundKey();
-        const beforeRunning = !!state.timer.isRunning;
-        const beforeEnded = !!state.timer.tournamentEnded;
+        const originalApplyCloudRow = applyCloudRow;
 
-        originalApplyCloudRow(row);
+        window.applyCloudRow = function (row) {
+            const beforeKey = getStageKey();
+            const beforeRunning = !!state.timer?.isRunning;
+            const beforeStartedAt = state.timer?.tournamentStartedAt || null;
 
-        try {
-            if (!row || row.key !== 'timer') return;
+            originalApplyCloudRow(row);
 
-            const afterKey = getCurrentStageSoundKey();
-            const afterRunning = !!state.timer.isRunning;
-            const afterEnded = !!state.timer.tournamentEnded;
+            try {
+                if (!row || row.key !== 'timer') return;
 
-            if (state.isAdmin) return;
-            if (!cloudReady) return;
-            if (afterEnded) return;
-            if (!afterRunning) return;
+                const afterKey = getStageKey();
+                const afterRunning = !!state.timer?.isRunning;
+                const afterStartedAt = state.timer?.tournamentStartedAt || null;
 
-            const stageChanged = beforeKey && afterKey && beforeKey !== afterKey;
-            const remoteStarted = !beforeRunning && afterRunning && !beforeEnded;
+                /**
+                 * Админ сам играет звук локально.
+                 * Этот блок нужен только гостям.
+                 */
+                if (state.isAdmin) return;
 
-            if (stageChanged || remoteStarted) {
-                playCurrentStageStartSoundOnce();
+                /**
+                 * При первичной загрузке облака cloudReady ещё false.
+                 * Чтобы гость не слышал звук просто при открытии страницы.
+                 */
+                if (!cloudReady) {
+                    markCurrentStageAsAlreadyPlayed();
+                    return;
+                }
+
+                /**
+                 * Если пришёл сброс турнира.
+                 */
+                if (!afterStartedAt || state.timer.tournamentEnded) {
+                    resetSoundMemory();
+                    return;
+                }
+
+                if (!afterRunning) {
+                    return;
+                }
+
+                const remoteStarted = !beforeRunning && afterRunning;
+                const stageChanged = beforeKey && afterKey && beforeKey !== afterKey;
+                const tournamentRestarted = beforeStartedAt && afterStartedAt && beforeStartedAt !== afterStartedAt;
+
+                if (remoteStarted || stageChanged || tournamentRestarted) {
+                    playStageStartSoundOnce();
+                }
+            } catch (err) {
+                console.warn('Guest cloud sound error:', err);
             }
-        } catch (err) {
-            console.warn('Guest sound sync error:', err);
-        }
-    };
+        };
+
+        applyCloudRow = window.applyCloudRow;
+    }
 
     /************************************************************
      * REBIND BUTTONS
      *
-     * В app.js кнопки уже могли получить старые функции.
-     * Поэтому перепривязываем основные кнопки на исправленные.
+     * Старый app.js уже назначил onclick на старые функции.
+     * Поэтому здесь перепривязываем кнопки к новым функциям.
      ************************************************************/
 
     function rebindButton(id, handler) {
@@ -391,54 +524,74 @@
 
     function rebindButtons() {
         rebindButton('startBtn', window.startTimer);
+        rebindButton('pauseBtn', window.pauseTimer);
         rebindButton('resetBtn', window.resetTimer);
         rebindButton('forwardBtn', window.nextLevel);
         rebindButton('backBtn', window.prevLevel);
 
-        rebindButton('playDefaultBlindSound', () => playDefaultSound(state.settings.defaultBlindSound || SOUND_PATHS.levelStart));
-        rebindButton('playDefaultBreakSound', () => playDefaultSound(state.settings.defaultBreakSound || SOUND_PATHS.breakStart));
-        rebindButton('playDefaultBigBreakSound', () => playDefaultSound(state.settings.defaultBigBreakSound || SOUND_PATHS.bigBreakStart));
+        rebindButton('playDefaultBlindSound', () => {
+            playDefaultSound(state.settings?.defaultBlindSound || DEFAULT_SOUNDS.levelStart);
+        });
+
+        rebindButton('playDefaultBreakSound', () => {
+            playDefaultSound(state.settings?.defaultBreakSound || DEFAULT_SOUNDS.breakStart);
+        });
+
+        rebindButton('playDefaultBigBreakSound', () => {
+            playDefaultSound(state.settings?.defaultBigBreakSound || DEFAULT_SOUNDS.bigBreakStart);
+        });
     }
 
     /************************************************************
-     * RESTART TIMER INTERVAL
+     * FIX EXISTING RUNNING TIMER
      ************************************************************/
 
-    function restartFixedInterval() {
+    function restartFixedTimerIfNeeded() {
         clearInterval(state.timer.interval);
 
         if (state.timer.isRunning) {
-            state.timer.interval = setInterval(() => {
-                syncTimer(false);
-                updateTimerDisplay();
-            }, 500);
+            startTimerInterval();
         }
     }
 
     /************************************************************
-     * INIT FIX
+     * INIT
      ************************************************************/
 
-    function initSoundFix() {
+    function initStableSoundFix() {
+        /**
+         * При открытии страницы не проигрываем звук текущего уровня.
+         * Просто считаем текущую стадию уже озвученной.
+         */
+        markCurrentStageAsAlreadyPlayed();
+
         rebindButtons();
-        restartFixedInterval();
+        restartFixedTimerIfNeeded();
 
         if (typeof updateTimerDisplay === 'function') {
             updateTimerDisplay();
         }
 
-        console.log('Poker Timer sound fix applied');
+        console.log('Stable Poker Sound Fix applied');
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initSoundFix);
+        document.addEventListener('DOMContentLoaded', () => {
+            initStableSoundFix();
+
+            setTimeout(initStableSoundFix, 500);
+            setTimeout(initStableSoundFix, 1500);
+        });
     } else {
-        initSoundFix();
+        initStableSoundFix();
+
+        setTimeout(initStableSoundFix, 500);
+        setTimeout(initStableSoundFix, 1500);
     }
 
     document.addEventListener('visibilitychange', () => {
         if (!document.hidden) {
-            restartFixedInterval();
+            restartFixedTimerIfNeeded();
 
             if (typeof syncTimer === 'function') {
                 syncTimer(true);
