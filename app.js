@@ -1747,6 +1747,7 @@ function addRegistrationButton() {
     btn.className = 'btn btn-primary';
     btn.id = 'registrationBtn';
     btn.textContent = '📝 Регистрация';
+    btn.style.display = 'inline-block';
     btn.onclick = openRegistrationEntry;
 
     $('rulesBtn').before(btn);
@@ -2871,6 +2872,11 @@ function showPage(pageId) {
 function updateAdminUI() {
     setText('userRole', state.isAdmin ? 'Админ' : 'Гость');
 
+    // Эти кнопки видны всем: и админу, и гостю
+    show($('leagueBtn'), 'inline-block');
+    show($('registrationBtn'), 'inline-block');
+    show($('rulesBtn'), 'inline-block');
+    show($('ratingBtn'), 'inline-block');
     show($('gridBtn'), 'inline-block');
 
     if (state.isAdmin) {
