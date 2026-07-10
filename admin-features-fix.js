@@ -349,11 +349,11 @@
 
             if (guestGridVisible) {
                 toggleBtn.classList.add('grid-visible');
-                toggleBtn.textContent = '👁 Сетка: Показана';
+                toggleBtn.textContent = 'Сетка: ВКЛ';
                 toggleBtn.title = 'Нажми, чтобы скрыть сетку от гостей';
             } else {
                 toggleBtn.classList.add('grid-hidden');
-                toggleBtn.textContent = '🙈 Сетка: Скрыта';
+                toggleBtn.textContent = 'Сетка: ВЫКЛ';
                 toggleBtn.title = 'Нажми, чтобы показать сетку гостям';
             }
         }
@@ -365,11 +365,11 @@
 
             if (guestRegistrationVisible) {
                 registrationToggleBtn.classList.add('registration-visible');
-                registrationToggleBtn.textContent = '👁 Регистрация: Показана';
+                registrationToggleBtn.textContent = 'Рег: ВКЛ';
                 registrationToggleBtn.title = 'Нажми, чтобы скрыть регистрацию от гостей';
             } else {
                 registrationToggleBtn.classList.add('registration-hidden');
-                registrationToggleBtn.textContent = '🙈 Регистрация: Скрыта';
+                registrationToggleBtn.textContent = 'Рег: ВЫКЛ';
                 registrationToggleBtn.title = 'Нажми, чтобы показать регистрацию гостям';
             }
         }
