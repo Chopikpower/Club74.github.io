@@ -110,6 +110,10 @@ const state = {
 
     rules: {
         text: ''
+    },
+
+    registration: {
+        agreementText: ''
     }
 };
 
@@ -249,13 +253,34 @@ async function cloudSet(key, value) {
     }
 }
 
+async function cloudSetForce(key, value) {
+    /**
+     * Используется для действий гостя, которые должны быть видны всем
+     * (например, саморегистрация участника). В отличие от cloudSet,
+     * не проверяет права админа.
+     */
+    if (!supabaseClient || !cloudReady) return;
+
+    const { error } = await supabaseClient
+        .from('app_state')
+        .upsert({
+            key,
+            value,
+            updated_at: new Date().toISOString()
+        });
+
+    if (error) {
+        console.error('Supabase write error:', error);
+    }
+}
+
 async function loadCloudInitial() {
     if (!supabaseClient) return;
 
     const { data, error } = await supabaseClient
         .from('app_state')
         .select('key,value')
-        .in('key', ['timer', 'grid', 'settings', 'rules']);
+        .in('key', ['timer', 'grid', 'settings', 'rules', 'registration']);
 
     if (error) {
         console.error('Supabase read error:', error);
@@ -321,6 +346,15 @@ function applyCloudRow(row) {
         state.rules.text = String(row.value?.text || '');
         localStorage.setItem('pokerRulesText', state.rules.text);
         renderRulesPage();
+    }
+
+    if (row.key === 'registration') {
+        state.registration.agreementText = String(row.value?.text || '');
+        localStorage.setItem('pokerRegistrationText', state.registration.agreementText);
+
+        if ($('registrationAgreementModal') && $('registrationAgreementModal').classList.contains('active')) {
+            renderRegistrationAgreement();
+        }
     }
 }
 
@@ -873,16 +907,78 @@ function renderPlayerList() {
         const item = document.createElement('div');
         item.className = 'player-item';
 
-        item.innerHTML = `
-            <div class="player-item-info">
-                <span class="player-item-name">${index + 1}. ${escapeHtml(p.name)}</span>
-                <span class="player-item-chips">${p.chips} очков</span>
-            </div>
-            ${state.isAdmin ? `<button class="btn btn-warning btn-small" onclick="removePlayer(${p.id})">✕</button>` : ''}
-        `;
+        if (state.isAdmin) {
+            item.innerHTML = `
+                <div class="player-item-info" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <span>${index + 1}.</span>
+                    <input type="text" class="player-edit-name" data-id="${p.id}" value="${escapeHtml(p.name)}"
+                        style="width:150px; padding:6px 8px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-color); color:var(--text-color);">
+                    <input type="number" class="player-edit-chips" data-id="${p.id}" value="${p.chips}" min="0"
+                        style="width:90px; padding:6px 8px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-color); color:var(--text-color);">
+                </div>
+                <div style="display:flex; gap:6px;">
+                    <button class="btn btn-primary btn-small" onclick="savePlayerEdit(${p.id})">💾</button>
+                    <button class="btn btn-warning btn-small" onclick="removePlayer(${p.id})">✕</button>
+                </div>
+            `;
+        } else {
+            item.innerHTML = `
+                <div class="player-item-info">
+                    <span class="player-item-name">${index + 1}. ${escapeHtml(p.name)}</span>
+                    <span class="player-item-chips">${p.chips} очков</span>
+                </div>
+            `;
+        }
 
         list.appendChild(item);
     });
+}
+
+function savePlayerEdit(id) {
+    if (!state.isAdmin) return;
+
+    const nameInput = document.querySelector(`.player-edit-name[data-id="${id}"]`);
+    const chipsInput = document.querySelector(`.player-edit-chips[data-id="${id}"]`);
+
+    if (!nameInput || !chipsInput) return;
+
+    const newName = nameInput.value.trim();
+    const newChips = parseInt(chipsInput.value) || 0;
+
+    if (!newName) {
+        alert('Имя не может быть пустым');
+        return;
+    }
+
+    const duplicate = state.grid.players.some(p => Number(p.id) !== Number(id) && p.name.trim().toLowerCase() === newName.toLowerCase());
+
+    if (duplicate) {
+        alert('Участник с таким именем уже есть в списке');
+        return;
+    }
+
+    state.grid.players.forEach(p => {
+        if (Number(p.id) === Number(id)) {
+            p.name = newName;
+            p.chips = newChips;
+        }
+    });
+
+    state.grid.tables.forEach(t => {
+        t.players.forEach(p => {
+            if (Number(p.id) === Number(id)) {
+                p.name = newName;
+                p.chips = newChips;
+            }
+        });
+    });
+
+    renderPlayerList();
+    renderTables();
+    renderRating();
+    saveGridData();
+
+    alert('Данные участника обновлены');
 }
 
 function createGrid() {
@@ -1629,6 +1725,149 @@ function saveRules() {
     });
 
     alert('Правила сохранены');
+}
+
+/************************************************************
+ * REGISTRATION (guest self-registration)
+ ************************************************************/
+
+function defaultRegistrationText() {
+    return `СОГЛАШЕНИЕ УЧАСТНИКА ТУРНИРА
+
+Регистрируясь в качестве участника турнира, вы соглашаетесь соблюдать правила турнира, уважительно относиться к другим игрокам и организаторам.
+
+Нажимая «Принять», вы подтверждаете, что ознакомились с условиями участия и согласны с ними.`;
+}
+
+function addRegistrationButton() {
+    if ($('registrationBtn')) return;
+    if (!$('rulesBtn')) return;
+
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-primary';
+    btn.id = 'registrationBtn';
+    btn.textContent = '📝 Регистрация';
+    btn.onclick = openRegistrationEntry;
+
+    $('rulesBtn').before(btn);
+}
+
+function openRegistrationEntry() {
+    renderRegistrationAgreement();
+    $('registrationAgreementModal').classList.add('active');
+}
+
+function renderRegistrationAgreement() {
+    const box = $('registrationAgreementContent');
+    const actions = $('registrationAgreementActions');
+    if (!box || !actions) return;
+
+    if (state.isAdmin) {
+        box.innerHTML = `
+            <p style="color:var(--text-muted); margin-bottom:15px;">
+                Вы вошли как админ. Здесь можно отредактировать текст соглашения, которое видят гости перед регистрацией. Гости смогут только читать текст и нажимать «Принять».
+            </p>
+            <textarea id="registrationAgreementEditor" style="
+                width:100%;
+                min-height:300px;
+                resize:vertical;
+                background:var(--bg-color);
+                border:1px solid var(--border-color);
+                border-radius:10px;
+                color:var(--text-color);
+                padding:16px;
+                font-size:15px;
+                line-height:1.6;
+            "></textarea>
+        `;
+
+        $('registrationAgreementEditor').value = state.registration.agreementText || '';
+
+        actions.innerHTML = `
+            <button class="btn btn-secondary" id="closeRegistrationAgreementBtn">← Назад к таймеру</button>
+            <button class="btn btn-primary" id="saveRegistrationAgreementBtn">💾 Сохранить текст</button>
+        `;
+
+        $('saveRegistrationAgreementBtn').onclick = saveRegistrationAgreement;
+    } else {
+        box.innerHTML = `
+            <div style="white-space:pre-wrap; text-align:justify; line-height:1.7; font-size:16px; max-height:400px; overflow-y:auto;">
+                ${state.registration.agreementText
+                    ? escapeHtml(state.registration.agreementText)
+                    : 'Организатор пока не добавил текст соглашения.'}
+            </div>
+        `;
+
+        actions.innerHTML = `
+            <button class="btn btn-secondary" id="closeRegistrationAgreementBtn">← Назад к таймеру</button>
+            <button class="btn btn-success" id="acceptRegistrationBtn">✅ Принять</button>
+        `;
+
+        $('acceptRegistrationBtn').onclick = acceptRegistrationAgreement;
+    }
+
+    $('closeRegistrationAgreementBtn').onclick = () => {
+        $('registrationAgreementModal').classList.remove('active');
+    };
+}
+
+function saveRegistrationAgreement() {
+    if (!state.isAdmin) return;
+
+    state.registration.agreementText = $('registrationAgreementEditor').value.trim();
+    localStorage.setItem('pokerRegistrationText', state.registration.agreementText);
+
+    cloudSet('registration', {
+        text: state.registration.agreementText,
+        updatedAt: new Date().toISOString()
+    });
+
+    alert('Текст соглашения сохранён');
+}
+
+function acceptRegistrationAgreement() {
+    $('registrationAgreementModal').classList.remove('active');
+    $('registrationPlayerName').value = '';
+    $('registrationFormModal').classList.add('active');
+}
+
+function submitRegistration() {
+    const nameInput = $('registrationPlayerName');
+    const name = nameInput.value.trim();
+
+    if (!name) {
+        alert('Введите имя участника');
+        return;
+    }
+
+    const exists = state.grid.players.some(p => p.name.trim().toLowerCase() === name.toLowerCase());
+
+    if (exists) {
+        alert('Участник с таким именем уже есть в списке');
+        return;
+    }
+
+    const chips = Number(state.tournament.startingChips) || 500;
+
+    state.grid.players.push({
+        id: uid(),
+        name,
+        chips,
+        eliminated: false,
+        eliminationPlace: null
+    });
+
+    saveLocal('pokerGridData', makeGridData());
+    cloudSetForce('grid', makeGridData());
+
+    nameInput.value = '';
+    $('registrationFormModal').classList.remove('active');
+
+    renderPlayerList();
+    renderTables();
+    renderRating();
+
+    alert('Вы успешно зарегистрированы! Ваше имя добавлено в список участников.');
 }
 
 /************************************************************
@@ -2765,6 +3004,12 @@ function resetAll() {
 
     $('saveRatingJpgBtn').onclick = saveRatingAsJpg;
 
+    $('cancelRegistrationFormBtn').onclick = () => {
+        $('registrationFormModal').classList.remove('active');
+        showPage('timerPage');
+    };
+    $('submitRegistrationBtn').onclick = submitRegistration;
+
     $('addLevelBtn').onclick = addLevel;
     $('saveLevelsBtn').onclick = saveLevels;
 
@@ -2859,8 +3104,10 @@ async function init() {
     if (localSettings) applySettingsData(localSettings);
 
     state.rules.text = localStorage.getItem('pokerRulesText') || '';
+    state.registration.agreementText = localStorage.getItem('pokerRegistrationText') || defaultRegistrationText();
 
     addRulesButton();
+    addRegistrationButton();
     ensureRulesPage();
     ensureTournamentPage();
     bindEvents();
@@ -2891,6 +3138,7 @@ async function init() {
  ************************************************************/
 
 window.removePlayer = removePlayer;
+window.savePlayerEdit = savePlayerEdit;
 window.openPlayerAction = openPlayerAction;
 window.updatePlayerChips = updatePlayerChips;
 window.openMovePlayer = openMovePlayer;
