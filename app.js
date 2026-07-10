@@ -1672,7 +1672,7 @@ function renderRulesPage() {
         };
     } else {
         box.innerHTML = state.rules.text
-            ? `<div style="white-space:pre-wrap; text-align:justify; line-height:1.75; font-size:18px;">${escapeHtml(state.rules.text)}</div>`
+            ? `<div style="white-space:pre-wrap; overflow-wrap:break-word; word-break:break-word; text-align:left; line-height:1.75; font-size:18px; width:100%; box-sizing:border-box;">${escapeHtml(state.rules.text)}</div>`
             : `<p style="color:var(--text-muted); text-align:center;">Правила пока не заполнены администратором.</p>`;
     }
 }
@@ -1791,7 +1791,16 @@ function renderRegistrationAgreement() {
         $('saveRegistrationAgreementBtn').onclick = saveRegistrationAgreement;
     } else {
         box.innerHTML = `
-            <div style="white-space:pre-wrap; text-align:justify; line-height:1.7; font-size:16px; max-height:400px; overflow-y:auto;">
+            <div style="
+                white-space:pre-wrap;
+                overflow-wrap:break-word;
+                word-break:break-word;
+                text-align:left;
+                line-height:1.7;
+                font-size:16px;
+                width:100%;
+                box-sizing:border-box;
+            ">
                 ${state.registration.agreementText
                     ? escapeHtml(state.registration.agreementText)
                     : 'Организатор пока не добавил текст соглашения.'}
