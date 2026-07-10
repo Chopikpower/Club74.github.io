@@ -1466,7 +1466,6 @@ function renderRating(targetId = 'ratingList') {
         item.innerHTML = `
             <div class="rating-position">${place}</div>
             <div class="rating-name">${escapeHtml(player.name)}</div>
-            <div class="rating-chips">${player.chips} очков</div>
             <div class="rating-points">${points} очков</div>
         `;
 
