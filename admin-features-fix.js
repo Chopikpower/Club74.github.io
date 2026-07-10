@@ -34,6 +34,10 @@
         state.settings.guestGridVisible = true;
     }
 
+    if (typeof state.settings.guestRegistrationVisible === 'undefined') {
+        state.settings.guestRegistrationVisible = true;
+    }
+
     /************************************************************
      * PATCH SETTINGS SAVE / LOAD
      ************************************************************/
@@ -47,6 +51,7 @@
             const data = originalMakeSettingsData();
 
             data.guestGridVisible = state.settings.guestGridVisible !== false;
+            data.guestRegistrationVisible = state.settings.guestRegistrationVisible !== false;
 
             return data;
         };
@@ -66,7 +71,12 @@
                 state.settings.guestGridVisible = data.guestGridVisible !== false;
             }
 
+            if (data && typeof data.guestRegistrationVisible !== 'undefined') {
+                state.settings.guestRegistrationVisible = data.guestRegistrationVisible !== false;
+            }
+
             applyGuestGridVisibility();
+            applyGuestRegistrationVisibility();
             updateAdminFeatureButtons();
         };
 
@@ -107,6 +117,23 @@
             }
 
             #guestGridToggleBtn:hover {
+                filter: brightness(1.08);
+            }
+
+            #guestRegistrationToggleBtn {
+                background: #34495e;
+                color: white;
+            }
+
+            #guestRegistrationToggleBtn.registration-visible {
+                background: #2ecc71;
+            }
+
+            #guestRegistrationToggleBtn.registration-hidden {
+                background: #e74c3c;
+            }
+
+            #guestRegistrationToggleBtn:hover {
                 filter: brightness(1.08);
             }
 
@@ -278,15 +305,38 @@
             }
         }
 
+        if (!document.getElementById('guestRegistrationToggleBtn')) {
+            const btn = document.createElement('button');
+            btn.className = 'btn';
+            btn.id = 'guestRegistrationToggleBtn';
+            btn.type = 'button';
+            btn.style.display = 'none';
+            btn.onclick = toggleGuestRegistrationVisibility;
+
+            const gridToggleBtn = document.getElementById('guestGridToggleBtn');
+
+            if (gridToggleBtn) {
+                userInfo.insertBefore(btn, gridToggleBtn.nextSibling);
+            } else if (editorBtn) {
+                userInfo.insertBefore(btn, editorBtn.nextSibling);
+            } else if (logoutBtn) {
+                userInfo.insertBefore(btn, logoutBtn);
+            } else {
+                userInfo.appendChild(btn);
+            }
+        }
+
         updateAdminFeatureButtons();
     }
 
     function updateAdminFeatureButtons() {
         const passwordBtn = document.getElementById('adminPasswordFixBtn');
         const toggleBtn = document.getElementById('guestGridToggleBtn');
+        const registrationToggleBtn = document.getElementById('guestRegistrationToggleBtn');
 
         const isAdmin = !!state.isAdmin;
         const guestGridVisible = state.settings.guestGridVisible !== false;
+        const guestRegistrationVisible = state.settings.guestRegistrationVisible !== false;
 
         if (passwordBtn) {
             passwordBtn.style.display = isAdmin ? 'inline-block' : 'none';
@@ -305,6 +355,22 @@
                 toggleBtn.classList.add('grid-hidden');
                 toggleBtn.textContent = '🙈 Сетка: Скрыта';
                 toggleBtn.title = 'Нажми, чтобы показать сетку гостям';
+            }
+        }
+
+        if (registrationToggleBtn) {
+            registrationToggleBtn.style.display = isAdmin ? 'inline-block' : 'none';
+
+            registrationToggleBtn.classList.remove('registration-visible', 'registration-hidden');
+
+            if (guestRegistrationVisible) {
+                registrationToggleBtn.classList.add('registration-visible');
+                registrationToggleBtn.textContent = '👁 Регистрация: Показана';
+                registrationToggleBtn.title = 'Нажми, чтобы скрыть регистрацию от гостей';
+            } else {
+                registrationToggleBtn.classList.add('registration-hidden');
+                registrationToggleBtn.textContent = '🙈 Регистрация: Скрыта';
+                registrationToggleBtn.title = 'Нажми, чтобы показать регистрацию гостям';
             }
         }
     }
@@ -355,6 +421,83 @@
         }
     }
 
+    /************************************************************
+     * GUEST REGISTRATION VISIBILITY
+     ************************************************************/
+
+    function applyGuestRegistrationVisibility() {
+        const registrationBtn = document.getElementById('registrationBtn');
+
+        const guestRegistrationVisible = state.settings.guestRegistrationVisible !== false;
+
+        /**
+         * Админ всегда видит кнопку регистрации.
+         */
+        if (state.isAdmin) {
+            if (registrationBtn) registrationBtn.style.display = 'inline-block';
+            return;
+        }
+
+        /**
+         * Гость.
+         */
+        if (guestRegistrationVisible) {
+            if (registrationBtn) registrationBtn.style.display = 'inline-block';
+        } else {
+            if (registrationBtn) registrationBtn.style.display = 'none';
+
+            /**
+             * Если гость уже открыл модалку регистрации,
+             * закрываем её и возвращаем на таймер.
+             */
+            const modal = document.getElementById('registrationAgreementModal');
+
+            if (modal && modal.classList.contains('active')) {
+                modal.classList.remove('active');
+            }
+
+            const formModal = document.getElementById('registrationFormModal');
+
+            if (formModal && formModal.classList.contains('active')) {
+                formModal.classList.remove('active');
+            }
+        }
+    }
+
+    function toggleGuestRegistrationVisibility() {
+        if (!state.isAdmin) {
+            alert('Только админ может менять видимость регистрации');
+            return;
+        }
+
+        const current = state.settings.guestRegistrationVisible !== false;
+
+        state.settings.guestRegistrationVisible = !current;
+
+        applyGuestRegistrationVisibility();
+        updateAdminFeatureButtons();
+
+        if (typeof saveSettingsData === 'function') {
+            saveSettingsData();
+        } else {
+            localStorage.setItem('pokerSettings', JSON.stringify({
+                primaryColor: state.settings.primaryColor,
+                volume: state.settings.volume,
+                totalPoints: state.settings.totalPoints,
+                prizePlaces: state.settings.prizePlaces,
+                tournament: state.tournament,
+                guestGridVisible: state.settings.guestGridVisible,
+                guestRegistrationVisible: state.settings.guestRegistrationVisible
+            }));
+        }
+
+        alert(
+            state.settings.guestRegistrationVisible !== false
+                ? 'Регистрация ВКЛ'
+                : 'Регистрация ВЫКЛ'
+        );
+    }
+
     function toggleGuestGridVisibility() {
         if (!state.isAdmin) {
             alert('Только админ может менять видимость сетки');
@@ -381,7 +524,8 @@
                 totalPoints: state.settings.totalPoints,
                 prizePlaces: state.settings.prizePlaces,
                 tournament: state.tournament,
-                guestGridVisible: state.settings.guestGridVisible
+                guestGridVisible: state.settings.guestGridVisible,
+                guestRegistrationVisible: state.settings.guestRegistrationVisible
             }));
         }
 
@@ -406,6 +550,7 @@
 
             ensureAdminFeatureButtons();
             applyGuestGridVisibility();
+            applyGuestRegistrationVisibility();
             updateAdminFeatureButtons();
         };
 
@@ -432,7 +577,12 @@
                         state.settings.guestGridVisible = row.value.guestGridVisible !== false;
                     }
 
+                    if (row.value && typeof row.value.guestRegistrationVisible !== 'undefined') {
+                        state.settings.guestRegistrationVisible = row.value.guestRegistrationVisible !== false;
+                    }
+
                     applyGuestGridVisibility();
+                    applyGuestRegistrationVisibility();
                     updateAdminFeatureButtons();
                 }
             } catch (err) {
@@ -470,6 +620,43 @@
         };
 
         window.showPage = showPage;
+    }
+
+    /************************************************************
+     * PATCH openRegistrationEntry
+     *
+     * Если гость вручную попытается открыть регистрацию,
+     * а она скрыта — не пустим.
+     ************************************************************/
+
+    if (typeof openRegistrationEntry === 'function' && !window.__ADMIN_FEATURES_REGISTRATION_ENTRY_PATCHED__) {
+        window.__ADMIN_FEATURES_REGISTRATION_ENTRY_PATCHED__ = true;
+
+        const originalOpenRegistrationEntry = openRegistrationEntry;
+
+        openRegistrationEntry = function () {
+            const guestRegistrationVisible = state.settings.guestRegistrationVisible !== false;
+
+            if (!state.isAdmin && !guestRegistrationVisible) {
+                alert('Регистрация сейчас скрыта админом');
+                return;
+            }
+
+            originalOpenRegistrationEntry();
+        };
+
+        window.openRegistrationEntry = openRegistrationEntry;
+
+        /**
+         * registrationBtn.onclick был назначен в app.js напрямую
+         * ссылкой на старую функцию (btn.onclick = openRegistrationEntry),
+         * поэтому просто переприсваиваем обработчик на новую версию.
+         */
+        const regBtn = document.getElementById('registrationBtn');
+
+        if (regBtn) {
+            regBtn.onclick = openRegistrationEntry;
+        }
     }
 
     /************************************************************
@@ -515,9 +702,19 @@
 
             lastSettingsUpdatedAt = data.updated_at;
 
+            let changed = false;
+
             if (typeof data.value.guestGridVisible !== 'undefined') {
                 state.settings.guestGridVisible = data.value.guestGridVisible !== false;
+                changed = true;
+            }
 
+            if (typeof data.value.guestRegistrationVisible !== 'undefined') {
+                state.settings.guestRegistrationVisible = data.value.guestRegistrationVisible !== false;
+                changed = true;
+            }
+
+            if (changed) {
                 if (typeof saveLocal === 'function') {
                     saveLocal('pokerSettings', {
                         primaryColor: state.settings.primaryColor,
@@ -525,14 +722,19 @@
                         totalPoints: state.settings.totalPoints,
                         prizePlaces: state.settings.prizePlaces,
                         tournament: state.tournament,
-                        guestGridVisible: state.settings.guestGridVisible
+                        guestGridVisible: state.settings.guestGridVisible,
+                        guestRegistrationVisible: state.settings.guestRegistrationVisible
                     });
                 }
 
                 applyGuestGridVisibility();
+                applyGuestRegistrationVisibility();
                 updateAdminFeatureButtons();
 
-                console.log('Guest grid visibility synced:', state.settings.guestGridVisible);
+                console.log('Guest visibility synced:', {
+                    grid: state.settings.guestGridVisible,
+                    registration: state.settings.guestRegistrationVisible
+                });
             }
         } catch (err) {
             console.warn('Guest grid visibility polling error:', err);
@@ -572,10 +774,15 @@
                 if (typeof localSettings.guestGridVisible !== 'undefined') {
                     state.settings.guestGridVisible = localSettings.guestGridVisible !== false;
                 }
+
+                if (typeof localSettings.guestRegistrationVisible !== 'undefined') {
+                    state.settings.guestRegistrationVisible = localSettings.guestRegistrationVisible !== false;
+                }
             }
         } catch {}
 
         applyGuestGridVisibility();
+        applyGuestRegistrationVisibility();
         updateAdminFeatureButtons();
 
         startSettingsPolling();
