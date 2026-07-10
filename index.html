@@ -1581,6 +1581,21 @@
     }
 }
 
+#leagueBtn {
+    background: linear-gradient(135deg, #CBA135, #8a6a1f);
+    color: #12251D;
+    font-weight: 800;
+    border: 1px solid rgba(203, 161, 53, 0.8);
+    box-shadow: 0 0 14px rgba(203, 161, 53, 0.25);
+}
+
+#leagueBtn:hover {
+    background: linear-gradient(135deg, #e0b84a, #CBA135);
+    color: #12251D;
+    transform: translateY(-2px);
+    box-shadow: 0 0 22px rgba(203, 161, 53, 0.45);
+}
+
 #rulesBtn {
     background: #8e44ad;
     color: white;
@@ -1604,12 +1619,15 @@
     <div class="header">
         <div class="logo">🃏 Poker Timer</div>
         <div class="user-info">
-            <span class="user-role" id="userRole">Гость</span>
-            <button class="btn btn-warning nav-btn" data-page="ratingPage" id="ratingBtn">🏆 Рейтинг</button>
-            <button class="btn btn-success nav-btn" data-page="gridPage" id="gridBtn">📊 Сетка</button>
-            <button class="btn btn-secondary nav-btn" data-page="tournamentPage" id="editorBtn" style="display:none;">⚙️ Турнир</button>
-            <button class="btn btn-primary" id="loginBtn">Вход</button>
-            <button class="btn btn-secondary" id="logoutBtn" style="display:none;">Выход</button>
+    	<span class="user-role" id="userRole"> </span>
+
+    	<button class="btn" id="leagueBtn" onclick="window.location.href='League.html'">♠ Лига 4покеристов</button>
+
+    	<button class="btn btn-warning nav-btn" data-page="ratingPage" id="ratingBtn">🏆 Рейтинг</button>
+    	<button class="btn btn-success nav-btn" data-page="gridPage" id="gridBtn">📊 Сетка</button>
+    	<button class="btn btn-secondary nav-btn" data-page="tournamentPage" id="editorBtn" style="display:none;">⚙️ Турнир</button>
+    	<button class="btn btn-primary" id="loginBtn">Вход</button>
+    	<button class="btn btn-secondary" id="logoutBtn" style="display:none;">Выход</button>
         </div>
     </div>
 
