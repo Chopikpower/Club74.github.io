@@ -388,6 +388,48 @@
     font-weight:700;
   }
 
+    /* ---------- HOME BUTTON ---------- */
+  .home-btn-wrap{
+    text-align:center;
+    padding:20px 0 0;
+  }
+
+  .home-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:12px;
+    padding:16px 38px;
+    font-family:'Bebas Neue', sans-serif;
+    font-size:20px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--gold);
+    text-decoration:none;
+    background:linear-gradient(180deg, rgba(239,230,211,0.06), rgba(239,230,211,0.02));
+    border:1.5px solid rgba(203,161,53,0.55);
+    border-radius:999px;
+    transition:transform .25s ease, box-shadow .25s ease, border-color .25s ease, color .25s ease, background .25s ease;
+  }
+
+  .home-btn .arrow{
+    font-family:'Inter', sans-serif;
+    font-weight:700;
+    font-size:16px;
+    transition:transform .25s ease;
+  }
+
+  .home-btn:hover{
+    color:var(--ink);
+    background:var(--gold);
+    border-color:var(--gold);
+    box-shadow:0 14px 34px rgba(203,161,53,0.28);
+    transform:translateY(-2px);
+  }
+
+  .home-btn:hover .arrow{
+    transform:translateX(-4px);
+  }
+
   /* ---------- FOOTER ---------- */
   footer{
     text-align:center;
@@ -679,6 +721,12 @@
 
   </div>
 
+  <div class="home-btn-wrap">
+    <a class="home-btn" href="https://chopikpower.github.io/Club74.github.io/">
+      <span class="arrow">←</span> На главную
+    </a>
+  </div>
+  
   <footer>
     <div class="mark">♠ ♥ ♦ ♣</div>
     "Лига Чпокеристов"
