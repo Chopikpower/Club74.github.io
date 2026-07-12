@@ -3203,3 +3203,2239 @@ window.saveTournamentRules = saveTournamentRules;
 window.insertTournamentDefaultRules = insertTournamentDefaultRules;
 
 init();
+
+
+/* ============================================================
+ * CLOCK SYNC FIX (объединено из clock-sync-fix.js)
+ * ============================================================ */
+
+/************************************************************
+ * CLOCK SYNC FIX
+ *
+ * ПРОБЛЕМА:
+ * Таймер считает оставшееся время как targetEndTime - now(),
+ * где now() = Date.now() — то есть системные часы КОНКРЕТНОГО
+ * устройства. targetEndTime у всех устройств одинаковый (пришёл
+ * из облака), но если часы телефонов чуть разошлись (а на
+ * практике так почти всегда) — на экранах будет разное
+ * оставшееся время, хотя данные синхронизированы идеально.
+ *
+ * ФИКС:
+ * Периодически сверяем часы устройства с часами сервера
+ * Supabase (берём заголовок Date из обычного HTTP-ответа) и
+ * считаем разницу (clockOffsetMs). Дальше во всём приложении
+ * now() возвращает не "голый" Date.now(), а время, скорректированное
+ * на эту разницу — то есть все устройства ориентируются на одно
+ * и то же "серверное" время, а не на свои локальные часы.
+ ************************************************************/
+
+(function () {
+    if (window.__CLOCK_SYNC_FIX_PATCHED__) return;
+    window.__CLOCK_SYNC_FIX_PATCHED__ = true;
+
+    let clockOffsetMs = 0;
+
+    // Оригинальный now() из app.js возвращал голый Date.now().
+    // Подменяем на версию с поправкой на смещение серверных часов.
+    window.now = function () {
+        return Date.now() + clockOffsetMs;
+    };
+
+    async function syncClockOffset() {
+        try {
+            if (!SUPABASE_URL || !SUPABASE_KEY) return;
+
+            const t0 = Date.now();
+
+            const res = await fetch(
+                `${SUPABASE_URL}/rest/v1/app_state?select=key&limit=1`,
+                {
+                    method: 'GET',
+                    headers: {
+                        apikey: SUPABASE_KEY,
+                        Authorization: `Bearer ${SUPABASE_KEY}`
+                    }
+                }
+            );
+
+            const t1 = Date.now();
+
+            const serverDateHeader = res.headers.get('date');
+            if (!serverDateHeader) return;
+
+            const serverTime = new Date(serverDateHeader).getTime();
+            if (Number.isNaN(serverTime)) return;
+
+            // Компенсируем время сетевого запроса — считаем,
+            // что серверный момент соответствует середине round-trip.
+            const rtt = t1 - t0;
+            const estimatedServerNowAtT1 = serverTime + rtt / 2;
+
+            clockOffsetMs = estimatedServerNowAtT1 - t1;
+
+            console.log('Clock sync offset (ms):', Math.round(clockOffsetMs));
+        } catch (err) {
+            console.warn('Clock sync error:', err);
+        }
+    }
+
+    function boot() {
+        syncClockOffset();
+
+        // Переустанавливаем поправку раз в минуту — часы могут
+        // "поплыть" за время долгой сессии.
+        setInterval(syncClockOffset, 60000);
+
+        // И сразу же при возврате устройства к жизни —
+        // после блокировки экрана, сворачивания вкладки, обрыва сети.
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) syncClockOffset();
+        });
+
+        window.addEventListener('online', syncClockOffset);
+        window.addEventListener('focus', syncClockOffset);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot);
+    } else {
+        boot();
+    }
+})();
+
+
+/* ============================================================
+ * ADMIN FEATURES FIX (объединено из admin-features-fix.js)
+ * ============================================================ */
+
+/************************************************************
+ * ADMIN FEATURES FIX
+ *
+ * Что делает:
+ * ✅ Возвращает кнопку "Изменить пароль" для админа
+ * ✅ Добавляет кнопку "Сетка гостям: Показать/Скрыть"
+ * ✅ Админ управляет видимостью сетки для гостей
+ * ✅ Настройка синхронизируется через Supabase realtime
+ * ✅ Гость видит/не видит кнопку "Сетка" в реальном времени
+ *
+ * Подключать после app.js:
+ * <script src="app.js"></script>
+ * <script src="admin-features-fix.js"></script>
+ ************************************************************/
+
+(function () {
+    if (window.__ADMIN_FEATURES_FIX_LOADED__) return;
+    window.__ADMIN_FEATURES_FIX_LOADED__ = true;
+
+    console.log('Admin Features Fix loaded');
+
+    /************************************************************
+     * CHECK
+     ************************************************************/
+
+    if (typeof state === 'undefined') {
+        console.error('admin-features-fix.js: state не найден. Подключи файл после app.js');
+        return;
+    }
+
+    if (!state.settings) state.settings = {};
+
+    if (typeof state.settings.guestGridVisible === 'undefined') {
+        state.settings.guestGridVisible = true;
+    }
+
+    if (typeof state.settings.guestRegistrationVisible === 'undefined') {
+        state.settings.guestRegistrationVisible = true;
+    }
+
+    /************************************************************
+     * PATCH SETTINGS SAVE / LOAD
+     ************************************************************/
+
+    const originalMakeSettingsData = typeof makeSettingsData === 'function'
+        ? makeSettingsData
+        : null;
+
+    if (originalMakeSettingsData) {
+        makeSettingsData = function () {
+            const data = originalMakeSettingsData();
+
+            data.guestGridVisible = state.settings.guestGridVisible !== false;
+            data.guestRegistrationVisible = state.settings.guestRegistrationVisible !== false;
+
+            return data;
+        };
+
+        window.makeSettingsData = makeSettingsData;
+    }
+
+    const originalApplySettingsData = typeof applySettingsData === 'function'
+        ? applySettingsData
+        : null;
+
+    if (originalApplySettingsData) {
+        applySettingsData = function (data) {
+            originalApplySettingsData(data || {});
+
+            if (data && typeof data.guestGridVisible !== 'undefined') {
+                state.settings.guestGridVisible = data.guestGridVisible !== false;
+            }
+
+            if (data && typeof data.guestRegistrationVisible !== 'undefined') {
+                state.settings.guestRegistrationVisible = data.guestRegistrationVisible !== false;
+            }
+
+            applyGuestGridVisibility();
+            applyGuestRegistrationVisibility();
+            updateAdminFeatureButtons();
+        };
+
+        window.applySettingsData = applySettingsData;
+    }
+
+    /************************************************************
+     * STYLES
+     ************************************************************/
+
+    function ensureAdminFeatureStyles() {
+        if (document.getElementById('adminFeaturesFixStyles')) return;
+
+        const style = document.createElement('style');
+        style.id = 'adminFeaturesFixStyles';
+
+        style.textContent = `
+            #adminPasswordFixBtn {
+                background: #8e44ad;
+                color: white;
+            }
+
+            #adminPasswordFixBtn:hover {
+                background: #6c3483;
+            }
+
+            #guestGridToggleBtn {
+                background: #34495e;
+                color: white;
+            }
+
+            #guestGridToggleBtn.grid-visible {
+                background: #2ecc71;
+            }
+
+            #guestGridToggleBtn.grid-hidden {
+                background: #e74c3c;
+            }
+
+            #guestGridToggleBtn:hover {
+                filter: brightness(1.08);
+            }
+
+            #guestRegistrationToggleBtn {
+                background: #34495e;
+                color: white;
+            }
+
+            #guestRegistrationToggleBtn.registration-visible {
+                background: #2ecc71;
+            }
+
+            #guestRegistrationToggleBtn.registration-hidden {
+                background: #e74c3c;
+            }
+
+            #guestRegistrationToggleBtn:hover {
+                filter: brightness(1.08);
+            }
+
+            .admin-feature-modal-note {
+                color: var(--text-muted);
+                font-size: 13px;
+                margin-top: 8px;
+                line-height: 1.5;
+            }
+        `;
+
+        document.head.appendChild(style);
+    }
+
+    /************************************************************
+     * PASSWORD MODAL
+     ************************************************************/
+
+    function ensurePasswordModal() {
+        if (document.getElementById('adminPasswordFixModal')) return;
+
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.id = 'adminPasswordFixModal';
+
+        modal.innerHTML = `
+            <div class="modal-content login-modal">
+                <div class="modal-header">🔐 Изменить пароль админа</div>
+
+                <div class="form-group">
+                    <label>Новый пароль</label>
+                    <input type="password" id="adminFeatureNewPassword" placeholder="Введите новый пароль">
+                </div>
+
+                <div class="form-group">
+                    <label>Повторите пароль</label>
+                    <input type="password" id="adminFeatureConfirmPassword" placeholder="Повторите новый пароль">
+                    <div class="admin-feature-modal-note">
+                        Пароль сохраняется в браузере администратора.
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" id="adminPasswordFixCancelBtn">Отмена</button>
+                    <button class="btn btn-primary" id="adminPasswordFixSaveBtn">💾 Изменить пароль</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        document.getElementById('adminPasswordFixCancelBtn').onclick = closePasswordModal;
+        document.getElementById('adminPasswordFixSaveBtn').onclick = saveAdminPasswordFromModal;
+
+        const p1 = document.getElementById('adminFeatureNewPassword');
+        const p2 = document.getElementById('adminFeatureConfirmPassword');
+
+        [p1, p2].forEach(input => {
+            if (!input) return;
+
+            input.addEventListener('keydown', e => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveAdminPasswordFromModal();
+                }
+            });
+        });
+    }
+
+    function openPasswordModal() {
+        ensurePasswordModal();
+
+        const modal = document.getElementById('adminPasswordFixModal');
+        const p1 = document.getElementById('adminFeatureNewPassword');
+        const p2 = document.getElementById('adminFeatureConfirmPassword');
+
+        if (p1) p1.value = '';
+        if (p2) p2.value = '';
+
+        if (modal) modal.classList.add('active');
+
+        setTimeout(() => {
+            if (p1) p1.focus();
+        }, 100);
+    }
+
+    function closePasswordModal() {
+        const modal = document.getElementById('adminPasswordFixModal');
+
+        if (modal) modal.classList.remove('active');
+    }
+
+    function saveAdminPasswordFromModal() {
+        if (!state.isAdmin) {
+            alert('Только админ может менять пароль');
+            return;
+        }
+
+        const p1 = document.getElementById('adminFeatureNewPassword')?.value || '';
+        const p2 = document.getElementById('adminFeatureConfirmPassword')?.value || '';
+
+        if (!p1.trim()) {
+            alert('Введите новый пароль');
+            return;
+        }
+
+        if (p1 !== p2) {
+            alert('Пароли не совпадают');
+            return;
+        }
+
+        state.settings.adminPassword = p1;
+
+        if (typeof saveAdminState === 'function') {
+            saveAdminState();
+        } else {
+            localStorage.setItem('pokerTimerPassword', p1);
+        }
+
+        closePasswordModal();
+
+        alert('Пароль админа изменён');
+    }
+
+    /************************************************************
+     * HEADER BUTTONS
+     ************************************************************/
+
+    function ensureAdminFeatureButtons() {
+        ensureAdminFeatureStyles();
+        ensurePasswordModal();
+
+        const userInfo = document.querySelector('.user-info');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const editorBtn = document.getElementById('editorBtn');
+
+        if (!userInfo) return;
+
+        if (!document.getElementById('adminPasswordFixBtn')) {
+            const btn = document.createElement('button');
+            btn.className = 'btn';
+            btn.id = 'adminPasswordFixBtn';
+            btn.type = 'button';
+            btn.textContent = '🔐 Изменить пароль';
+            btn.style.display = 'none';
+            btn.onclick = openPasswordModal;
+
+            if (logoutBtn) {
+                userInfo.insertBefore(btn, logoutBtn);
+            } else {
+                userInfo.appendChild(btn);
+            }
+        }
+
+        if (!document.getElementById('guestGridToggleBtn')) {
+            const btn = document.createElement('button');
+            btn.className = 'btn';
+            btn.id = 'guestGridToggleBtn';
+            btn.type = 'button';
+            btn.style.display = 'none';
+            btn.onclick = toggleGuestGridVisibility;
+
+            if (editorBtn) {
+                userInfo.insertBefore(btn, editorBtn.nextSibling);
+            } else if (logoutBtn) {
+                userInfo.insertBefore(btn, logoutBtn);
+            } else {
+                userInfo.appendChild(btn);
+            }
+        }
+
+        if (!document.getElementById('guestRegistrationToggleBtn')) {
+            const btn = document.createElement('button');
+            btn.className = 'btn';
+            btn.id = 'guestRegistrationToggleBtn';
+            btn.type = 'button';
+            btn.style.display = 'none';
+            btn.onclick = toggleGuestRegistrationVisibility;
+
+            const gridToggleBtn = document.getElementById('guestGridToggleBtn');
+
+            if (gridToggleBtn) {
+                userInfo.insertBefore(btn, gridToggleBtn.nextSibling);
+            } else if (editorBtn) {
+                userInfo.insertBefore(btn, editorBtn.nextSibling);
+            } else if (logoutBtn) {
+                userInfo.insertBefore(btn, logoutBtn);
+            } else {
+                userInfo.appendChild(btn);
+            }
+        }
+
+        updateAdminFeatureButtons();
+    }
+
+    function updateAdminFeatureButtons() {
+        const passwordBtn = document.getElementById('adminPasswordFixBtn');
+        const toggleBtn = document.getElementById('guestGridToggleBtn');
+        const registrationToggleBtn = document.getElementById('guestRegistrationToggleBtn');
+
+        const isAdmin = !!state.isAdmin;
+        const guestGridVisible = state.settings.guestGridVisible !== false;
+        const guestRegistrationVisible = state.settings.guestRegistrationVisible !== false;
+
+        if (passwordBtn) {
+            passwordBtn.style.display = isAdmin ? 'inline-block' : 'none';
+        }
+
+        if (toggleBtn) {
+            toggleBtn.style.display = isAdmin ? 'inline-block' : 'none';
+
+            toggleBtn.classList.remove('grid-visible', 'grid-hidden');
+
+            if (guestGridVisible) {
+                toggleBtn.classList.add('grid-visible');
+                toggleBtn.textContent = '👁 Сетка: Показана';
+                toggleBtn.title = 'Нажми, чтобы скрыть сетку от гостей';
+            } else {
+                toggleBtn.classList.add('grid-hidden');
+                toggleBtn.textContent = '🙈 Сетка: Скрыта';
+                toggleBtn.title = 'Нажми, чтобы показать сетку гостям';
+            }
+        }
+
+        if (registrationToggleBtn) {
+            registrationToggleBtn.style.display = isAdmin ? 'inline-block' : 'none';
+
+            registrationToggleBtn.classList.remove('registration-visible', 'registration-hidden');
+
+            if (guestRegistrationVisible) {
+                registrationToggleBtn.classList.add('registration-visible');
+                registrationToggleBtn.textContent = '👁 Регистрация: Показана';
+                registrationToggleBtn.title = 'Нажми, чтобы скрыть регистрацию от гостей';
+            } else {
+                registrationToggleBtn.classList.add('registration-hidden');
+                registrationToggleBtn.textContent = '🙈 Регистрация: Скрыта';
+                registrationToggleBtn.title = 'Нажми, чтобы показать регистрацию гостям';
+            }
+        }
+    }
+
+    /************************************************************
+     * GUEST GRID VISIBILITY
+     ************************************************************/
+
+    function applyGuestGridVisibility() {
+        const gridBtn = document.getElementById('gridBtn');
+        const gridPage = document.getElementById('gridPage');
+
+        const guestGridVisible = state.settings.guestGridVisible !== false;
+
+        /**
+         * Админ всегда видит сетку.
+         */
+        if (state.isAdmin) {
+            if (gridBtn) gridBtn.style.display = 'inline-block';
+            if (gridPage) gridPage.dataset.guestHidden = '0';
+            return;
+        }
+
+        /**
+         * Гость.
+         */
+        if (guestGridVisible) {
+            if (gridBtn) gridBtn.style.display = 'inline-block';
+            if (gridPage) gridPage.dataset.guestHidden = '0';
+        } else {
+            if (gridBtn) gridBtn.style.display = 'none';
+            if (gridPage) gridPage.dataset.guestHidden = '1';
+
+            /**
+             * Если гость уже находится на странице сетки,
+             * отправляем его обратно на таймер.
+             */
+            if (state.currentPage === 'gridPage') {
+                if (typeof showPage === 'function') {
+                    showPage('timerPage');
+                } else {
+                    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+                    const timerPage = document.getElementById('timerPage');
+                    if (timerPage) timerPage.classList.add('active');
+                    state.currentPage = 'timerPage';
+                }
+            }
+        }
+    }
+
+    /************************************************************
+     * GUEST REGISTRATION VISIBILITY
+     ************************************************************/
+
+    function applyGuestRegistrationVisibility() {
+        const registrationBtn = document.getElementById('registrationBtn');
+
+        const guestRegistrationVisible = state.settings.guestRegistrationVisible !== false;
+
+        /**
+         * Админ всегда видит кнопку регистрации.
+         */
+        if (state.isAdmin) {
+            if (registrationBtn) registrationBtn.style.display = 'inline-block';
+            return;
+        }
+
+        /**
+         * Гость.
+         */
+        if (guestRegistrationVisible) {
+            if (registrationBtn) registrationBtn.style.display = 'inline-block';
+        } else {
+            if (registrationBtn) registrationBtn.style.display = 'none';
+
+            /**
+             * Если гость уже открыл модалку регистрации,
+             * закрываем её и возвращаем на таймер.
+             */
+            const modal = document.getElementById('registrationAgreementModal');
+
+            if (modal && modal.classList.contains('active')) {
+                modal.classList.remove('active');
+            }
+
+            const formModal = document.getElementById('registrationFormModal');
+
+            if (formModal && formModal.classList.contains('active')) {
+                formModal.classList.remove('active');
+            }
+        }
+    }
+
+    function toggleGuestRegistrationVisibility() {
+        if (!state.isAdmin) {
+            alert('Только админ может менять видимость регистрации');
+            return;
+        }
+
+        const current = state.settings.guestRegistrationVisible !== false;
+
+        state.settings.guestRegistrationVisible = !current;
+
+        applyGuestRegistrationVisibility();
+        updateAdminFeatureButtons();
+
+        if (typeof saveSettingsData === 'function') {
+            saveSettingsData();
+        } else {
+            localStorage.setItem('pokerSettings', JSON.stringify({
+                primaryColor: state.settings.primaryColor,
+                volume: state.settings.volume,
+                totalPoints: state.settings.totalPoints,
+                prizePlaces: state.settings.prizePlaces,
+                tournament: state.tournament,
+                guestGridVisible: state.settings.guestGridVisible,
+                guestRegistrationVisible: state.settings.guestRegistrationVisible
+            }));
+        }
+
+        alert(
+            state.settings.guestRegistrationVisible !== false
+                ? 'Регистрация ВКЛ'
+                : 'Регистрация ВЫКЛ'
+        );
+    }
+
+    function toggleGuestGridVisibility() {
+        if (!state.isAdmin) {
+            alert('Только админ может менять видимость сетки');
+            return;
+        }
+
+        const current = state.settings.guestGridVisible !== false;
+
+        state.settings.guestGridVisible = !current;
+
+        applyGuestGridVisibility();
+        updateAdminFeatureButtons();
+
+        /**
+         * Сохраняем локально и в Supabase.
+         * saveSettingsData уже использует cloudSet('settings', ...)
+         */
+        if (typeof saveSettingsData === 'function') {
+            saveSettingsData();
+        } else {
+            localStorage.setItem('pokerSettings', JSON.stringify({
+                primaryColor: state.settings.primaryColor,
+                volume: state.settings.volume,
+                totalPoints: state.settings.totalPoints,
+                prizePlaces: state.settings.prizePlaces,
+                tournament: state.tournament,
+                guestGridVisible: state.settings.guestGridVisible,
+                guestRegistrationVisible: state.settings.guestRegistrationVisible
+            }));
+        }
+
+        alert(
+            state.settings.guestGridVisible !== false
+                ? 'Сетка ВКЛ'
+                : 'Сетка ВЫКЛ'
+        );
+    }
+
+    /************************************************************
+     * PATCH updateAdminUI
+     ************************************************************/
+
+    if (typeof updateAdminUI === 'function' && !window.__ADMIN_FEATURES_UPDATE_UI_PATCHED__) {
+        window.__ADMIN_FEATURES_UPDATE_UI_PATCHED__ = true;
+
+        const originalUpdateAdminUI = updateAdminUI;
+
+        updateAdminUI = function () {
+            originalUpdateAdminUI();
+
+            ensureAdminFeatureButtons();
+            applyGuestGridVisibility();
+            applyGuestRegistrationVisibility();
+            updateAdminFeatureButtons();
+        };
+
+        window.updateAdminUI = updateAdminUI;
+    }
+
+    /************************************************************
+     * PATCH applyCloudRow
+     *
+     * Когда админ меняет настройку, гости получают settings realtime.
+     ************************************************************/
+
+    if (typeof applyCloudRow === 'function' && !window.__ADMIN_FEATURES_CLOUD_PATCHED__) {
+        window.__ADMIN_FEATURES_CLOUD_PATCHED__ = true;
+
+        const originalApplyCloudRow = applyCloudRow;
+
+        applyCloudRow = function (row) {
+            originalApplyCloudRow(row);
+
+            try {
+                if (row && row.key === 'settings') {
+                    if (row.value && typeof row.value.guestGridVisible !== 'undefined') {
+                        state.settings.guestGridVisible = row.value.guestGridVisible !== false;
+                    }
+
+                    if (row.value && typeof row.value.guestRegistrationVisible !== 'undefined') {
+                        state.settings.guestRegistrationVisible = row.value.guestRegistrationVisible !== false;
+                    }
+
+                    applyGuestGridVisibility();
+                    applyGuestRegistrationVisibility();
+                    updateAdminFeatureButtons();
+                }
+            } catch (err) {
+                console.warn('Admin features applyCloudRow error:', err);
+            }
+        };
+
+        window.applyCloudRow = applyCloudRow;
+    }
+
+    /************************************************************
+     * PATCH showPage
+     *
+     * Если гость вручную попытается открыть #gridPage,
+     * а сетка скрыта — не пустим.
+     ************************************************************/
+
+    if (typeof showPage === 'function' && !window.__ADMIN_FEATURES_SHOW_PAGE_PATCHED__) {
+        window.__ADMIN_FEATURES_SHOW_PAGE_PATCHED__ = true;
+
+        const originalShowPage = showPage;
+
+        showPage = function (pageId) {
+            const guestGridVisible = state.settings.guestGridVisible !== false;
+
+            if (!state.isAdmin && pageId === 'gridPage' && !guestGridVisible) {
+                alert('Сетка сейчас скрыта админом');
+                pageId = 'timerPage';
+            }
+
+            originalShowPage(pageId);
+
+            applyGuestGridVisibility();
+            updateAdminFeatureButtons();
+        };
+
+        window.showPage = showPage;
+    }
+
+    /************************************************************
+     * PATCH openRegistrationEntry
+     *
+     * Если гость вручную попытается открыть регистрацию,
+     * а она скрыта — не пустим.
+     ************************************************************/
+
+    if (typeof openRegistrationEntry === 'function' && !window.__ADMIN_FEATURES_REGISTRATION_ENTRY_PATCHED__) {
+        window.__ADMIN_FEATURES_REGISTRATION_ENTRY_PATCHED__ = true;
+
+        const originalOpenRegistrationEntry = openRegistrationEntry;
+
+        openRegistrationEntry = function () {
+            const guestRegistrationVisible = state.settings.guestRegistrationVisible !== false;
+
+            if (!state.isAdmin && !guestRegistrationVisible) {
+                alert('Регистрация сейчас скрыта админом');
+                return;
+            }
+
+            originalOpenRegistrationEntry();
+        };
+
+        window.openRegistrationEntry = openRegistrationEntry;
+
+        /**
+         * registrationBtn.onclick был назначен в app.js напрямую
+         * ссылкой на старую функцию (btn.onclick = openRegistrationEntry),
+         * поэтому просто переприсваиваем обработчик на новую версию.
+         */
+        const regBtn = document.getElementById('registrationBtn');
+
+        if (regBtn) {
+            regBtn.onclick = openRegistrationEntry;
+        }
+    }
+
+    /************************************************************
+     * CLOUD FALLBACK POLLING
+     *
+     * Если realtime Supabase не сработает,
+     * гость всё равно обновит настройку раз в 3 секунды.
+     ************************************************************/
+
+    let lastSettingsUpdatedAt = null;
+    let settingsPollingStarted = false;
+
+    async function loadSettingsFromCloudForGuestGrid() {
+        try {
+            if (state.isAdmin) return;
+
+            if (!SUPABASE_URL || !SUPABASE_KEY) return;
+
+            if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+                return;
+            }
+
+            if (!supabaseClient) {
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+
+            const { data, error } = await supabaseClient
+                .from('app_state')
+                .select('key,value,updated_at')
+                .eq('key', 'settings')
+                .maybeSingle();
+
+            if (error) {
+                console.warn('Guest grid visibility settings read error:', error);
+                return;
+            }
+
+            if (!data || !data.value) return;
+
+            if (lastSettingsUpdatedAt && data.updated_at === lastSettingsUpdatedAt) {
+                return;
+            }
+
+            lastSettingsUpdatedAt = data.updated_at;
+
+            let changed = false;
+
+            if (typeof data.value.guestGridVisible !== 'undefined') {
+                state.settings.guestGridVisible = data.value.guestGridVisible !== false;
+                changed = true;
+            }
+
+            if (typeof data.value.guestRegistrationVisible !== 'undefined') {
+                state.settings.guestRegistrationVisible = data.value.guestRegistrationVisible !== false;
+                changed = true;
+            }
+
+            if (changed) {
+                if (typeof saveLocal === 'function') {
+                    saveLocal('pokerSettings', {
+                        primaryColor: state.settings.primaryColor,
+                        volume: state.settings.volume,
+                        totalPoints: state.settings.totalPoints,
+                        prizePlaces: state.settings.prizePlaces,
+                        tournament: state.tournament,
+                        guestGridVisible: state.settings.guestGridVisible,
+                        guestRegistrationVisible: state.settings.guestRegistrationVisible
+                    });
+                }
+
+                applyGuestGridVisibility();
+                applyGuestRegistrationVisibility();
+                updateAdminFeatureButtons();
+
+                console.log('Guest visibility synced:', {
+                    grid: state.settings.guestGridVisible,
+                    registration: state.settings.guestRegistrationVisible
+                });
+            }
+        } catch (err) {
+            console.warn('Guest grid visibility polling error:', err);
+        }
+    }
+
+    function startSettingsPolling() {
+        if (settingsPollingStarted) return;
+
+        settingsPollingStarted = true;
+
+        setInterval(() => {
+            if (!state.isAdmin) {
+                loadSettingsFromCloudForGuestGrid();
+            }
+        }, 3000);
+
+        loadSettingsFromCloudForGuestGrid();
+    }
+
+    /************************************************************
+     * INIT
+     ************************************************************/
+
+    function initAdminFeaturesFix() {
+        ensureAdminFeatureButtons();
+
+        /**
+         * Если настройка уже была в localStorage, подхватим её.
+         */
+        try {
+            const localSettingsRaw = localStorage.getItem('pokerSettings');
+
+            if (localSettingsRaw) {
+                const localSettings = JSON.parse(localSettingsRaw);
+
+                if (typeof localSettings.guestGridVisible !== 'undefined') {
+                    state.settings.guestGridVisible = localSettings.guestGridVisible !== false;
+                }
+
+                if (typeof localSettings.guestRegistrationVisible !== 'undefined') {
+                    state.settings.guestRegistrationVisible = localSettings.guestRegistrationVisible !== false;
+                }
+            }
+        } catch {}
+
+        applyGuestGridVisibility();
+        applyGuestRegistrationVisibility();
+        updateAdminFeatureButtons();
+
+        startSettingsPolling();
+
+        console.log('Admin Features Fix applied');
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            initAdminFeaturesFix();
+
+            setTimeout(initAdminFeaturesFix, 500);
+            setTimeout(initAdminFeaturesFix, 1500);
+            setTimeout(initAdminFeaturesFix, 3000);
+        });
+    } else {
+        initAdminFeaturesFix();
+
+        setTimeout(initAdminFeaturesFix, 500);
+        setTimeout(initAdminFeaturesFix, 1500);
+        setTimeout(initAdminFeaturesFix, 3000);
+    }
+
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            initAdminFeaturesFix();
+
+            if (!state.isAdmin) {
+                loadSettingsFromCloudForGuestGrid();
+            }
+        }
+    });
+
+})();
+
+
+/* ============================================================
+ * ADMIN PASSWORD CLOUD FIX (объединено из admin-password-cloud-fix.js)
+ * ============================================================ */
+
+/************************************************************
+ * ADMIN PASSWORD CLOUD FIX
+ *
+ * Что исправляет:
+ * ✅ Пароль админа работает в новом браузере
+ * ✅ Пароль админа работает в инкогнито
+ * ✅ Пароль синхронизируется через Supabase
+ * ✅ Старый localStorage-пароль переносится в облако
+ *
+ * Подключать ПОСЛЕ app.js и после admin-features-fix.js:
+ *
+ * <script src="app.js"></script>
+ * <script src="sound-fix.js"></script>
+ * <script src="admin-features-fix.js"></script>
+ * <script src="admin-password-cloud-fix.js"></script>
+ ************************************************************/
+
+(function () {
+    if (window.__ADMIN_PASSWORD_CLOUD_FIX_LOADED__) return;
+    window.__ADMIN_PASSWORD_CLOUD_FIX_LOADED__ = true;
+
+    console.log('Admin Password Cloud Fix loaded');
+
+    if (typeof state === 'undefined') {
+        console.error('admin-password-cloud-fix.js: state не найден. Подключи файл после app.js');
+        return;
+    }
+
+    if (!state.settings) state.settings = {};
+
+    /************************************************************
+     * DEFAULT PASSWORD INIT
+     ************************************************************/
+
+    function getLocalAdminPassword() {
+        return (
+            localStorage.getItem('pokerTimerPassword') ||
+            state.settings.adminPassword ||
+            'secret'
+        );
+    }
+
+    state.settings.adminPassword = getLocalAdminPassword();
+
+    /************************************************************
+     * PATCH makeSettingsData
+     * Добавляем adminPassword в объект настроек, который уходит в Supabase.
+     ************************************************************/
+
+    if (typeof makeSettingsData === 'function' && !window.__PASSWORD_FIX_MAKE_SETTINGS_PATCHED__) {
+        window.__PASSWORD_FIX_MAKE_SETTINGS_PATCHED__ = true;
+
+        const originalMakeSettingsData = makeSettingsData;
+
+        makeSettingsData = function () {
+            const data = originalMakeSettingsData();
+
+            data.adminPassword = state.settings.adminPassword || getLocalAdminPassword();
+
+            if (typeof state.settings.guestGridVisible !== 'undefined') {
+                data.guestGridVisible = state.settings.guestGridVisible !== false;
+            }
+
+            return data;
+        };
+
+        window.makeSettingsData = makeSettingsData;
+    }
+
+    /************************************************************
+     * PATCH applySettingsData
+     * Читаем adminPassword из Supabase.
+     ************************************************************/
+
+    if (typeof applySettingsData === 'function' && !window.__PASSWORD_FIX_APPLY_SETTINGS_PATCHED__) {
+        window.__PASSWORD_FIX_APPLY_SETTINGS_PATCHED__ = true;
+
+        const originalApplySettingsData = applySettingsData;
+
+        applySettingsData = function (data) {
+            originalApplySettingsData(data || {});
+
+            if (data && typeof data.adminPassword !== 'undefined' && data.adminPassword) {
+                state.settings.adminPassword = String(data.adminPassword);
+                localStorage.setItem('pokerTimerPassword', state.settings.adminPassword);
+            }
+
+            if (data && typeof data.guestGridVisible !== 'undefined') {
+                state.settings.guestGridVisible = data.guestGridVisible !== false;
+            }
+        };
+
+        window.applySettingsData = applySettingsData;
+    }
+
+    /************************************************************
+     * SUPABASE HELPERS
+     ************************************************************/
+
+    async function ensureSupabaseClient() {
+        if (supabaseClient) return supabaseClient;
+
+        if (!SUPABASE_URL || !SUPABASE_KEY) {
+            console.warn('Supabase URL/KEY отсутствуют');
+            return null;
+        }
+
+        if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+            console.warn('Supabase SDK не подключён');
+            return null;
+        }
+
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        return supabaseClient;
+    }
+
+    async function readCloudSettings() {
+        try {
+            const client = await ensureSupabaseClient();
+            if (!client) return null;
+
+            const { data, error } = await client
+                .from('app_state')
+                .select('key,value,updated_at')
+                .eq('key', 'settings')
+                .maybeSingle();
+
+            if (error) {
+                console.warn('Ошибка чтения settings из Supabase:', error);
+                return null;
+            }
+
+            if (!data || !data.value) return null;
+
+            if (typeof applySettingsData === 'function') {
+                applySettingsData(data.value);
+            }
+
+            if (typeof saveLocal === 'function') {
+                saveLocal('pokerSettings', {
+                    ...data.value,
+                    adminPassword: state.settings.adminPassword
+                });
+            } else {
+                localStorage.setItem('pokerSettings', JSON.stringify({
+                    ...data.value,
+                    adminPassword: state.settings.adminPassword
+                }));
+            }
+
+            return data.value;
+        } catch (err) {
+            console.warn('readCloudSettings error:', err);
+            return null;
+        }
+    }
+
+    async function writeCloudSettings() {
+        try {
+            const client = await ensureSupabaseClient();
+            if (!client) return;
+
+            const value = typeof makeSettingsData === 'function'
+                ? makeSettingsData()
+                : {
+                    primaryColor: state.settings.primaryColor,
+                    volume: state.settings.volume,
+                    totalPoints: state.settings.totalPoints,
+                    prizePlaces: state.settings.prizePlaces,
+                    tournament: state.tournament,
+                    guestGridVisible: state.settings.guestGridVisible !== false,
+                    adminPassword: state.settings.adminPassword || getLocalAdminPassword()
+                };
+
+            value.adminPassword = state.settings.adminPassword || getLocalAdminPassword();
+
+            const { error } = await client
+                .from('app_state')
+                .upsert({
+                    key: 'settings',
+                    value,
+                    updated_at: new Date().toISOString()
+                });
+
+            if (error) {
+                console.warn('Ошибка записи settings в Supabase:', error);
+                return;
+            }
+
+            console.log('Пароль админа сохранён в Supabase');
+        } catch (err) {
+            console.warn('writeCloudSettings error:', err);
+        }
+    }
+
+    /************************************************************
+     * PASSWORD SAVE
+     ************************************************************/
+
+    async function saveAdminPasswordEverywhere(password) {
+        password = String(password || '').trim();
+
+        if (!password) {
+            alert('Введите пароль');
+            return false;
+        }
+
+        state.settings.adminPassword = password;
+
+        localStorage.setItem('pokerTimerPassword', password);
+
+        try {
+            const localSettingsRaw = localStorage.getItem('pokerSettings');
+            const localSettings = localSettingsRaw ? JSON.parse(localSettingsRaw) : {};
+
+            localSettings.adminPassword = password;
+
+            if (typeof state.settings.guestGridVisible !== 'undefined') {
+                localSettings.guestGridVisible = state.settings.guestGridVisible !== false;
+            }
+
+            localStorage.setItem('pokerSettings', JSON.stringify(localSettings));
+        } catch {
+            localStorage.setItem('pokerSettings', JSON.stringify({
+                adminPassword: password
+            }));
+        }
+
+        await writeCloudSettings();
+
+        return true;
+    }
+
+    /************************************************************
+     * LOGIN FIX
+     ************************************************************/
+
+    /**
+     * Оборачиваем чтение пароля из облака в тайм-аут: на мобильной сети
+     * запрос может зависнуть надолго. Если за 4 секунды ответа нет —
+     * просто продолжаем с тем паролем, что уже есть локально,
+     * вместо того чтобы кнопка "Войти" молча ничего не делала.
+     */
+    function withTimeout(promise, ms) {
+        return Promise.race([
+            promise,
+            new Promise(resolve => setTimeout(() => resolve(null), ms))
+        ]);
+    }
+
+    async function loginWithCloudPassword() {
+        const btn = document.getElementById('confirmLoginBtn');
+        const input = document.getElementById('adminPassword');
+        const pass = input ? input.value : '';
+
+        const originalBtnText = btn ? btn.textContent : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Проверка...';
+        }
+
+        try {
+            /**
+             * Перед проверкой пароля читаем актуальный пароль из Supabase,
+             * но не дольше 4 секунд — иначе на слабой мобильной сети
+             * кнопка выглядит так, будто вообще не реагирует на нажатие.
+             */
+            await withTimeout(readCloudSettings(), 4000);
+
+            const correctPassword = state.settings.adminPassword || 'secret';
+
+            if (pass === correctPassword) {
+                state.isAdmin = true;
+
+                localStorage.setItem('pokerTimerIsAdmin', 'true');
+                localStorage.setItem('pokerTimerPassword', correctPassword);
+
+                if (typeof saveAdminState === 'function') {
+                    saveAdminState();
+                }
+
+                const modal = document.getElementById('loginModal');
+                if (modal) modal.classList.remove('active');
+
+                if (input) input.value = '';
+
+                if (typeof updateAdminUI === 'function') updateAdminUI();
+                if (typeof renderTables === 'function') renderTables();
+                if (typeof updateTimerDisplay === 'function') updateTimerDisplay();
+
+                /**
+                 * Если в Supabase ещё не было пароля, сохраняем текущий.
+                 * Тоже не блокируем интерфейс, если сеть подвисла.
+                 */
+                withTimeout(writeCloudSettings(), 4000);
+
+                console.log('Вход админа успешен');
+            } else {
+                alert('Неверный пароль');
+            }
+        } catch (err) {
+            console.warn('Login error:', err);
+            alert('Не удалось выполнить вход — проверьте соединение и попробуйте ещё раз');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = originalBtnText || 'Войти';
+            }
+        }
+    }
+
+    window.loginWithCloudPassword = loginWithCloudPassword;
+
+    function patchLoginButton() {
+        const btn = document.getElementById('confirmLoginBtn');
+
+        if (btn && btn.dataset.passwordCloudFix !== '1') {
+            btn.dataset.passwordCloudFix = '1';
+
+            /**
+             * capture=true + stopImmediatePropagation
+             * блокирует старый обработчик входа, который проверял только localStorage.
+             */
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+
+                loginWithCloudPassword();
+            }, true);
+        }
+
+        const input = document.getElementById('adminPassword');
+
+        if (input && input.dataset.passwordCloudEnterFix !== '1') {
+            input.dataset.passwordCloudEnterFix = '1';
+
+            input.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+
+                    loginWithCloudPassword();
+                }
+            }, true);
+        }
+    }
+
+    /************************************************************
+     * CHANGE PASSWORD FIX
+     * Перехватывает старую кнопку из вкладки настроек.
+     ************************************************************/
+
+    async function changePasswordFromSettingsTab() {
+        if (!state.isAdmin) {
+            alert('Только админ может менять пароль');
+            return;
+        }
+
+        const p1 = document.getElementById('newPassword')?.value || '';
+        const p2 = document.getElementById('confirmPassword')?.value || '';
+
+        if (!p1.trim()) {
+            alert('Введите новый пароль');
+            return;
+        }
+
+        if (p1 !== p2) {
+            alert('Пароли не совпадают');
+            return;
+        }
+
+        const ok = await saveAdminPasswordEverywhere(p1);
+
+        if (!ok) return;
+
+        const input1 = document.getElementById('newPassword');
+        const input2 = document.getElementById('confirmPassword');
+
+        if (input1) input1.value = '';
+        if (input2) input2.value = '';
+
+        alert('Пароль изменён и сохранён в облако');
+    }
+
+    /************************************************************
+     * CHANGE PASSWORD FIX
+     * Перехватывает кнопку из admin-features-fix.js, если она подключена.
+     ************************************************************/
+
+    async function changePasswordFromAdminFeatureModal() {
+        if (!state.isAdmin) {
+            alert('Только админ может менять пароль');
+            return;
+        }
+
+        const p1 = document.getElementById('adminFeatureNewPassword')?.value || '';
+        const p2 = document.getElementById('adminFeatureConfirmPassword')?.value || '';
+
+        if (!p1.trim()) {
+            alert('Введите новый пароль');
+            return;
+        }
+
+        if (p1 !== p2) {
+            alert('Пароли не совпадают');
+            return;
+        }
+
+        const ok = await saveAdminPasswordEverywhere(p1);
+
+        if (!ok) return;
+
+        const input1 = document.getElementById('adminFeatureNewPassword');
+        const input2 = document.getElementById('adminFeatureConfirmPassword');
+        const modal = document.getElementById('adminPasswordFixModal');
+
+        if (input1) input1.value = '';
+        if (input2) input2.value = '';
+        if (modal) modal.classList.remove('active');
+
+        alert('Пароль изменён и сохранён в облако');
+    }
+
+    function patchChangePasswordButtons() {
+        /**
+         * Делегированный обработчик.
+         * Работает даже если кнопка появилась позже.
+         */
+        if (window.__PASSWORD_FIX_CHANGE_BUTTONS_PATCHED__) return;
+        window.__PASSWORD_FIX_CHANGE_BUTTONS_PATCHED__ = true;
+
+        document.addEventListener('click', function (e) {
+            const target = e.target;
+
+            if (!target) return;
+
+            if (target.id === 'changePasswordBtn') {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+
+                changePasswordFromSettingsTab();
+                return;
+            }
+
+            if (target.id === 'adminPasswordFixSaveBtn') {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+
+                changePasswordFromAdminFeatureModal();
+                return;
+            }
+        }, true);
+    }
+
+    /************************************************************
+     * PATCH saveAdminState
+     ************************************************************/
+
+    if (typeof saveAdminState === 'function' && !window.__PASSWORD_FIX_SAVE_ADMIN_PATCHED__) {
+        window.__PASSWORD_FIX_SAVE_ADMIN_PATCHED__ = true;
+
+        const originalSaveAdminState = saveAdminState;
+
+        saveAdminState = function () {
+            originalSaveAdminState();
+
+            localStorage.setItem('pokerTimerPassword', state.settings.adminPassword || getLocalAdminPassword());
+
+            if (state.isAdmin) {
+                writeCloudSettings();
+            }
+        };
+
+        window.saveAdminState = saveAdminState;
+    }
+
+    /************************************************************
+     * PATCH applyCloudRow
+     ************************************************************/
+
+    if (typeof applyCloudRow === 'function' && !window.__PASSWORD_FIX_APPLY_CLOUD_PATCHED__) {
+        window.__PASSWORD_FIX_APPLY_CLOUD_PATCHED__ = true;
+
+        const originalApplyCloudRow = applyCloudRow;
+
+        applyCloudRow = function (row) {
+            originalApplyCloudRow(row);
+
+            try {
+                if (row && row.key === 'settings' && row.value) {
+                    if (typeof row.value.adminPassword !== 'undefined' && row.value.adminPassword) {
+                        state.settings.adminPassword = String(row.value.adminPassword);
+                        localStorage.setItem('pokerTimerPassword', state.settings.adminPassword);
+                    }
+                }
+            } catch (err) {
+                console.warn('Password cloud applyCloudRow error:', err);
+            }
+        };
+
+        window.applyCloudRow = applyCloudRow;
+    }
+
+    /************************************************************
+     * BOOTSTRAP
+     ************************************************************/
+
+    async function bootstrapPasswordCloudFix() {
+        patchLoginButton();
+        patchChangePasswordButtons();
+
+        /**
+         * Сначала читаем пароль из облака.
+         */
+        const cloudSettings = await readCloudSettings();
+
+        /**
+         * Если пользователь уже админ в этом браузере,
+         * но в облаке ещё нет adminPassword —
+         * переносим локальный пароль в Supabase.
+         */
+        if (state.isAdmin) {
+            const cloudHasPassword = cloudSettings && cloudSettings.adminPassword;
+
+            if (!cloudHasPassword) {
+                state.settings.adminPassword = getLocalAdminPassword();
+                await writeCloudSettings();
+                console.log('Локальный пароль админа перенесён в Supabase');
+            }
+        }
+
+        patchLoginButton();
+
+        console.log('Admin Password Cloud Fix applied');
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () {
+            bootstrapPasswordCloudFix();
+
+            setTimeout(bootstrapPasswordCloudFix, 500);
+            setTimeout(bootstrapPasswordCloudFix, 1500);
+            setTimeout(bootstrapPasswordCloudFix, 3000);
+        });
+    } else {
+        bootstrapPasswordCloudFix();
+
+        setTimeout(bootstrapPasswordCloudFix, 500);
+        setTimeout(bootstrapPasswordCloudFix, 1500);
+        setTimeout(bootstrapPasswordCloudFix, 3000);
+    }
+
+})();
+
+/* ============================================================
+ * STABLE SOUND FIX (объединено из sound-fix.js)
+ * ============================================================ */
+
+/************************************************************
+ * STABLE SOUND FIX FOR POKER TIMER
+ *
+ * ✅ blind.mp3 — при начале каждого уровня
+ * ✅ break.mp3 — при начале обычного перерыва
+ * ✅ bigbreak.mp3 — при начале большого перерыва
+ * ✅ Без дублей
+ * ✅ Работает у админа и гостя
+ * ✅ Работает при авто-переходе
+ * ✅ Работает при кнопке "Вперёд"
+ * ✅ При "Назад" звук НЕ играет
+ *
+ * Подключать ПОСЛЕ app.js и после остальных фиксов:
+ * <script src="sound-fix.js"></script>
+ ************************************************************/
+
+(function () {
+    if (window.__STABLE_POKER_SOUND_FIX__) return;
+    window.__STABLE_POKER_SOUND_FIX__ = true;
+
+    console.log('Stable Poker Sound Fix loaded');
+
+    if (typeof state === 'undefined') {
+        console.error('sound-fix.js: state не найден. Файл должен быть подключён после app.js');
+        return;
+    }
+
+    /************************************************************
+     * SETTINGS
+     ************************************************************/
+
+    const DEFAULT_SOUNDS = {
+        levelStart: 'sound/blind.mp3',
+        breakStart: 'sound/break.mp3',
+        bigBreakStart: 'sound/bigbreak.mp3'
+    };
+
+    let lastPlayedStageKey = null;
+    let audioUnlocked = false;
+
+    /************************************************************
+     * AUDIO UNLOCK
+     *
+     * Браузеры часто запрещают звук без клика пользователя.
+     * Поэтому после любого клика/тапа звук разблокируется.
+     ************************************************************/
+
+    function unlockAudio() {
+        if (audioUnlocked) return;
+
+        try {
+            const audio = new Audio(DEFAULT_SOUNDS.levelStart);
+            audio.volume = 0;
+            audio.muted = true;
+
+            audio.play()
+                .then(() => {
+                    audio.pause();
+                    audio.currentTime = 0;
+                    audioUnlocked = true;
+                    console.log('Audio unlocked');
+                })
+                .catch(() => {
+                    audioUnlocked = false;
+                });
+        } catch {
+            audioUnlocked = false;
+        }
+    }
+
+    document.addEventListener('click', unlockAudio);
+    document.addEventListener('touchstart', unlockAudio);
+    document.addEventListener('keydown', unlockAudio);
+
+    /************************************************************
+     * SOUND HELPERS
+     ************************************************************/
+
+    function getVolume() {
+        const volume = Number(state.settings?.volume);
+
+        if (Number.isFinite(volume)) {
+            return Math.max(0, Math.min(1, volume / 100));
+        }
+
+        return 0.7;
+    }
+
+    function getSoundSrc(type) {
+        if (type === 'levelStart') {
+            return state.settings?.customLevelSound ||
+                state.settings?.defaultBlindSound ||
+                DEFAULT_SOUNDS.levelStart;
+        }
+
+        if (type === 'breakStart') {
+            return state.settings?.customBreakSound ||
+                state.settings?.defaultBreakSound ||
+                DEFAULT_SOUNDS.breakStart;
+        }
+
+        if (type === 'bigBreakStart') {
+            return state.settings?.customBigBreakSound ||
+                state.settings?.defaultBigBreakSound ||
+                DEFAULT_SOUNDS.bigBreakStart;
+        }
+
+        return null;
+    }
+
+    window.playSound = function (type) {
+        const src = getSoundSrc(type);
+
+        if (!src) return;
+
+        try {
+            const audio = new Audio(src);
+            audio.volume = getVolume();
+
+            audio.play().catch(err => {
+                console.warn('Звук не проиграл. Возможно, браузер заблокировал autoplay или файл не найден:', src, err);
+            });
+        } catch (err) {
+            console.warn('Ошибка запуска звука:', err);
+        }
+    };
+
+    window.playDefaultSound = function (src) {
+        if (!src) return;
+
+        try {
+            const audio = new Audio(src);
+            audio.volume = getVolume();
+
+            audio.play().catch(() => {
+                alert('Не удалось воспроизвести файл: ' + src);
+            });
+        } catch {
+            alert('Не удалось воспроизвести файл: ' + src);
+        }
+    };
+
+    /************************************************************
+     * STAGE DETECTION
+     ************************************************************/
+
+    function getStageSoundType() {
+        if (!state.timer || state.timer.tournamentEnded) return null;
+
+        if (state.timer.isBreak) {
+            if (state.timer.breakType === 'big') {
+                return 'bigBreakStart';
+            }
+
+            return 'breakStart';
+        }
+
+        return 'levelStart';
+    }
+
+    function getStageKey() {
+        if (!state.timer || state.timer.tournamentEnded) return null;
+
+        const type = getStageSoundType();
+
+        if (!type) return null;
+
+        /**
+         * tournamentStartedAt нужен, чтобы после сброса и нового старта
+         * уровень 1 снова мог проиграть blind.mp3.
+         *
+         * targetEndTime НЕ используем, иначе после паузы/продолжения
+         * звук мог бы повторяться.
+         */
+        return [
+            state.timer.tournamentStartedAt || 'not-started',
+            type,
+            Number(state.timer.currentLevel || 1),
+            state.timer.isBreak ? String(state.timer.breakType || 'regular') : 'level'
+        ].join(':');
+    }
+
+    function playStageStartSoundOnce() {
+        const type = getStageSoundType();
+        const key = getStageKey();
+
+        if (!type || !key) return;
+
+        if (lastPlayedStageKey === key) {
+            return;
+        }
+
+        lastPlayedStageKey = key;
+
+        playSound(type);
+
+        console.log('Sound played:', type, key);
+    }
+
+    function markCurrentStageAsAlreadyPlayed() {
+        lastPlayedStageKey = getStageKey();
+    }
+
+    function resetSoundMemory() {
+        lastPlayedStageKey = null;
+    }
+
+    /************************************************************
+     * OVERRIDE syncTimer
+     *
+     * ВАЖНО:
+     * Сначала переводим таймер на новую стадию,
+     * потом играем звук НАЧАЛА новой стадии.
+     ************************************************************/
+
+    window.syncTimer = function (silent = false) {
+        if (
+            !state.timer ||
+            !state.timer.isRunning ||
+            !state.timer.targetEndTime ||
+            state.timer.tournamentEnded
+        ) {
+            return;
+        }
+
+        let currentNow = now();
+        let changedStage = false;
+
+        while (
+            state.timer.isRunning &&
+            !state.timer.tournamentEnded &&
+            state.timer.targetEndTime &&
+            currentNow >= Number(state.timer.targetEndTime)
+        ) {
+            const endedAt = Number(state.timer.targetEndTime);
+
+            moveToNextStage(endedAt);
+            changedStage = true;
+
+            if (!silent && !state.timer.tournamentEnded) {
+                playStageStartSoundOnce();
+            }
+
+            currentNow = now();
+        }
+
+        if (
+            state.timer.isRunning &&
+            !state.timer.tournamentEnded &&
+            state.timer.targetEndTime
+        ) {
+            const remainingMs = Math.max(0, Number(state.timer.targetEndTime) - now());
+
+            state.timer.timeRemaining = Math.ceil(remainingMs / 1000);
+            state.timer.elapsedTime = Math.max(
+                0,
+                Number(state.timer.totalLevelTime || 0) - Number(state.timer.timeRemaining || 0)
+            );
+        }
+
+        if (changedStage && typeof saveTimerState === 'function') {
+            saveTimerState();
+        }
+    };
+
+    /************************************************************
+     * OVERRIDE timerTick
+     ************************************************************/
+
+    window.timerTick = function () {
+        syncTimer(false);
+        updateTimerDisplay();
+    };
+
+    /************************************************************
+     * OVERRIDE INTERVALS
+     ************************************************************/
+
+    window.startTimerInterval = function () {
+        clearInterval(state.timer.interval);
+
+        state.timer.interval = setInterval(() => {
+            syncTimer(false);
+            updateTimerDisplay();
+        }, 500);
+    };
+
+    window.restartTimerIntervalIfNeeded = function () {
+        clearInterval(state.timer.interval);
+
+        if (state.timer.isRunning) {
+            startTimerInterval();
+        }
+    };
+
+    /************************************************************
+     * OVERRIDE startTimer
+     *
+     * При первом старте уровня играет blind.mp3.
+     * При продолжении после паузы звук НЕ повторяется.
+     ************************************************************/
+
+    window.startTimer = function () {
+        if (state.timer.isRunning || state.timer.tournamentEnded) return;
+
+        ensureTournamentStarted();
+
+        state.timer.isRunning = true;
+        state.timer.isPaused = false;
+        state.timer.targetEndTime = now() + Number(state.timer.timeRemaining || 0) * 1000;
+
+        startTimerInterval();
+        saveTimerState();
+        updateTimerDisplay();
+
+        playStageStartSoundOnce();
+    };
+
+    /************************************************************
+     * OVERRIDE pauseTimer
+     *
+     * На паузе звук не трогаем.
+     ************************************************************/
+
+    window.pauseTimer = function () {
+        if (!state.timer.isRunning) return;
+
+        syncTimer(true);
+
+        state.timer.isRunning = false;
+        state.timer.isPaused = true;
+        state.timer.targetEndTime = null;
+
+        clearInterval(state.timer.interval);
+
+        saveTimerState();
+        updateTimerDisplay();
+    };
+
+    /************************************************************
+     * OVERRIDE nextLevel
+     *
+     * При ручном "Вперёд" звук играет для новой стадии.
+     ************************************************************/
+
+    window.nextLevel = function () {
+        const wasRunning = state.timer.isRunning;
+
+        moveToNextStage(now());
+
+        if (!state.timer.tournamentEnded) {
+            state.timer.isRunning = wasRunning;
+            state.timer.isPaused = false;
+
+            if (wasRunning) {
+                state.timer.targetEndTime = now() + Number(state.timer.timeRemaining || 0) * 1000;
+                startTimerInterval();
+            } else {
+                state.timer.targetEndTime = null;
+                clearInterval(state.timer.interval);
+            }
+        }
+
+        saveTimerState();
+        updateTimerDisplay();
+
+        if (!state.timer.tournamentEnded) {
+            playStageStartSoundOnce();
+        }
+    };
+
+    /************************************************************
+     * OVERRIDE prevLevel
+     *
+     * При "Назад" звук НЕ играем.
+     * Но память звука сбрасываем, чтобы если потом снова нажать "Вперёд",
+     * звук новой стадии снова сработал.
+     ************************************************************/
+
+    window.prevLevel = function () {
+        const t = currentTemplate();
+
+        if (state.timer.currentLevel <= 1 && !state.timer.isBreak) {
+            alert('Это первый уровень, назад перемотать нельзя');
+            return;
+        }
+
+        clearInterval(state.timer.interval);
+
+        if (state.timer.isBreak) {
+            state.timer.isBreak = false;
+            state.timer.breakType = null;
+        } else {
+            state.timer.currentLevel = Math.max(1, Number(state.timer.currentLevel) - 1);
+        }
+
+        state.timer.isRunning = false;
+        state.timer.isPaused = false;
+        state.timer.tournamentEnded = false;
+        state.timer.totalLevelTime = t.levelDuration * 60;
+        state.timer.timeRemaining = state.timer.totalLevelTime;
+        state.timer.elapsedTime = 0;
+        state.timer.targetEndTime = null;
+
+        resetSoundMemory();
+
+        saveTimerState();
+        updateTimerDisplay();
+    };
+
+    /************************************************************
+     * OVERRIDE resetTimer
+     *
+     * Сброс — без звука.
+     ************************************************************/
+
+    window.resetTimer = function () {
+        const t = currentTemplate();
+
+        clearInterval(state.timer.interval);
+
+        Object.assign(state.timer, {
+            currentLevel: 1,
+            timeRemaining: t.levelDuration * 60,
+            totalLevelTime: t.levelDuration * 60,
+            elapsedTime: 0,
+            isRunning: false,
+            isPaused: false,
+            isBreak: false,
+            breakType: null,
+            tournamentEnded: false,
+            tournamentStartedAt: null,
+            targetEndTime: null
+        });
+
+        resetSoundMemory();
+
+        saveTimerState();
+        updateTimerDisplay();
+    };
+
+    /************************************************************
+     * GUEST CLOUD SOUND
+     *
+     * Гость получает изменение таймера из Supabase.
+     * Если админ запустил таймер или перевёл стадию —
+     * у гостя тоже играет нужный звук.
+     ************************************************************/
+
+    if (typeof applyCloudRow === 'function' && !window.__STABLE_SOUND_CLOUD_PATCHED__) {
+        window.__STABLE_SOUND_CLOUD_PATCHED__ = true;
+
+        const originalApplyCloudRow = applyCloudRow;
+
+        window.applyCloudRow = function (row) {
+            const beforeKey = getStageKey();
+            const beforeRunning = !!state.timer?.isRunning;
+            const beforeStartedAt = state.timer?.tournamentStartedAt || null;
+
+            originalApplyCloudRow(row);
+
+            try {
+                if (!row || row.key !== 'timer') return;
+
+                const afterKey = getStageKey();
+                const afterRunning = !!state.timer?.isRunning;
+                const afterStartedAt = state.timer?.tournamentStartedAt || null;
+
+                /**
+                 * Админ сам играет звук локально.
+                 * Этот блок нужен только гостям.
+                 */
+                if (state.isAdmin) return;
+
+                /**
+                 * При первичной загрузке облака cloudReady ещё false.
+                 * Чтобы гость не слышал звук просто при открытии страницы.
+                 */
+                if (!cloudReady) {
+                    markCurrentStageAsAlreadyPlayed();
+                    return;
+                }
+
+                /**
+                 * Если пришёл сброс турнира.
+                 */
+                if (!afterStartedAt || state.timer.tournamentEnded) {
+                    resetSoundMemory();
+                    return;
+                }
+
+                if (!afterRunning) {
+                    return;
+                }
+
+                const remoteStarted = !beforeRunning && afterRunning;
+                const stageChanged = beforeKey && afterKey && beforeKey !== afterKey;
+                const tournamentRestarted = beforeStartedAt && afterStartedAt && beforeStartedAt !== afterStartedAt;
+
+                if (remoteStarted || stageChanged || tournamentRestarted) {
+                    playStageStartSoundOnce();
+                }
+            } catch (err) {
+                console.warn('Guest cloud sound error:', err);
+            }
+        };
+
+        applyCloudRow = window.applyCloudRow;
+    }
+
+    /************************************************************
+     * REBIND BUTTONS
+     *
+     * Старый app.js уже назначил onclick на старые функции.
+     * Поэтому здесь перепривязываем кнопки к новым функциям.
+     ************************************************************/
+
+    function rebindButton(id, handler) {
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        el.onclick = handler;
+    }
+
+    function rebindButtons() {
+        rebindButton('startBtn', window.startTimer);
+        rebindButton('pauseBtn', window.pauseTimer);
+        rebindButton('resetBtn', window.resetTimer);
+        rebindButton('forwardBtn', window.nextLevel);
+        rebindButton('backBtn', window.prevLevel);
+
+        rebindButton('playDefaultBlindSound', () => {
+            playDefaultSound(state.settings?.defaultBlindSound || DEFAULT_SOUNDS.levelStart);
+        });
+
+        rebindButton('playDefaultBreakSound', () => {
+            playDefaultSound(state.settings?.defaultBreakSound || DEFAULT_SOUNDS.breakStart);
+        });
+
+        rebindButton('playDefaultBigBreakSound', () => {
+            playDefaultSound(state.settings?.defaultBigBreakSound || DEFAULT_SOUNDS.bigBreakStart);
+        });
+    }
+
+    /************************************************************
+     * FIX EXISTING RUNNING TIMER
+     ************************************************************/
+
+    function restartFixedTimerIfNeeded() {
+        clearInterval(state.timer.interval);
+
+        if (state.timer.isRunning) {
+            startTimerInterval();
+        }
+    }
+
+    /************************************************************
+     * INIT
+     ************************************************************/
+
+    function initStableSoundFix() {
+        /**
+         * При открытии страницы не проигрываем звук текущего уровня.
+         * Просто считаем текущую стадию уже озвученной.
+         */
+        markCurrentStageAsAlreadyPlayed();
+
+        rebindButtons();
+        restartFixedTimerIfNeeded();
+
+        if (typeof updateTimerDisplay === 'function') {
+            updateTimerDisplay();
+        }
+
+        console.log('Stable Poker Sound Fix applied');
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            initStableSoundFix();
+
+            setTimeout(initStableSoundFix, 500);
+            setTimeout(initStableSoundFix, 1500);
+        });
+    } else {
+        initStableSoundFix();
+
+        setTimeout(initStableSoundFix, 500);
+        setTimeout(initStableSoundFix, 1500);
+    }
+
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            restartFixedTimerIfNeeded();
+
+            if (typeof syncTimer === 'function') {
+                syncTimer(true);
+            }
+
+            if (typeof updateTimerDisplay === 'function') {
+                updateTimerDisplay();
+            }
+        }
+    });
+
+})();
+
+
+/* ============================================================
+ * TIMER CLOUD SYNC FIX (объединено из timer-sync-fix.js)
+ * ============================================================ */
+
+/************************************************************
+ * TIMER CLOUD SYNC FIX
+ *
+ * ПРОБЛЕМА:
+ * У гостей таймер обновлялся только через Supabase Realtime
+ * (WebSocket-подписка в subscribeCloud()). Если сокет обрывается —
+ * экран телефона заблокировался, вкладка свернулась в фон,
+ * просела сеть на турнире — событие Realtime теряется без следа.
+ * Ничего его не подхватывает, пока канал сам не переподключится,
+ * из-за чего таймер у гостей "зависает", запускается с большой
+ * задержкой или не реагирует на паузу вовсе.
+ *
+ * У блока 'settings' уже был запасной поллинг на такой случай
+ * (см. admin-features-fix.js -> loadSettingsFromCloudForGuestGrid),
+ * а у 'timer' — не было. Этот файл добавляет то же самое для timer:
+ * гость раз в 2 секунды дочитывает актуальное состояние таймера
+ * напрямую из базы, независимо от того, жив realtime-канал или нет.
+ *
+ * v2: добавлены подробные console.log, чтобы можно было увидеть
+ * в консоли браузера, реально ли работает поллинг и что он видит.
+ ************************************************************/
+
+(function () {
+    if (window.__TIMER_SYNC_FIX_PATCHED__) return;
+    window.__TIMER_SYNC_FIX_PATCHED__ = true;
+
+    console.log('Timer Sync Fix loaded');
+
+    let lastTimerUpdatedAt = null;
+    let pollingStarted = false;
+    let pollCount = 0;
+
+    async function pollTimerFromCloud() {
+        pollCount++;
+
+        try {
+            // Админ — источник истины сам по себе, ему поллинг не нужен.
+            if (state.isAdmin) {
+                if (pollCount % 5 === 0) {
+                    console.log('Timer poll skipped: this device is admin');
+                }
+                return;
+            }
+
+            if (!supabaseClient) {
+                console.log('Timer poll skipped: supabaseClient not ready yet');
+                return;
+            }
+
+            const { data, error } = await supabaseClient
+                .from('app_state')
+                .select('key,value,updated_at')
+                .eq('key', 'timer')
+                .maybeSingle();
+
+            if (error) {
+                console.warn('Timer polling read error:', error);
+                return;
+            }
+
+            if (!data || !data.value) {
+                console.log('Timer poll: no data returned from app_state');
+                return;
+            }
+
+            // Раз в несколько тиков печатаем "пульс", чтобы видеть,
+            // что поллинг реально работает, даже если данные не менялись.
+            if (pollCount % 5 === 0) {
+                console.log(
+                    'Timer poll heartbeat — cloud isRunning:', data.value.isRunning,
+                    '| isPaused:', data.value.isPaused,
+                    '| level:', data.value.currentLevel,
+                    '| updated_at:', data.updated_at,
+                    '| local isRunning:', state.timer.isRunning
+                );
+            }
+
+            // Ничего не изменилось с прошлого раза — пропускаем,
+            // чтобы не дёргать applyCloudRow впустую.
+            if (lastTimerUpdatedAt && data.updated_at === lastTimerUpdatedAt) return;
+
+            lastTimerUpdatedAt = data.updated_at;
+
+            console.log(
+                'Timer poll: CHANGE DETECTED, applying ->',
+                'isRunning:', data.value.isRunning,
+                '| isPaused:', data.value.isPaused,
+                '| updated_at:', data.updated_at
+            );
+
+            if (typeof applyCloudRow === 'function') {
+                applyingRemote = true;
+                applyCloudRow({ key: 'timer', value: data.value });
+                applyingRemote = false;
+            }
+        } catch (err) {
+            console.warn('Timer polling error:', err);
+        }
+    }
+
+    function startTimerPolling() {
+        if (pollingStarted) return;
+        pollingStarted = true;
+
+        console.log('Timer polling started (every 2s)');
+
+        setInterval(pollTimerFromCloud, 2000);
+        pollTimerFromCloud();
+    }
+
+    function boot() {
+        startTimerPolling();
+
+        // Как только устройство "проснулось" (вернулись в приложение,
+        // разблокировали телефон, восстановился интернет) —
+        // сразу же принудительно подтягиваем актуальное состояние,
+        // не дожидаясь ближайшего тика поллинга.
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) pollTimerFromCloud();
+        });
+
+        window.addEventListener('online', pollTimerFromCloud);
+        window.addEventListener('focus', pollTimerFromCloud);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot);
+    } else {
+        boot();
+    }
+
+    // На случай, если supabaseClient создаётся с задержкой
+    // (initSupabase ещё не успел отработать к моменту загрузки этого файла).
+    setTimeout(boot, 800);
+    setTimeout(boot, 2000);
+})();
