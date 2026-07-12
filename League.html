@@ -673,12 +673,39 @@
   function buildTable(container, total, goldCount, goldLabel, openLabel){
     container.innerHTML = '';
 
-    const radius = 55;
+    const cx = 80, cy = 50;
+    const radiusX = 54, radiusY = 30;
+
+    // Sample the ellipse finely and build a cumulative arc-length table,
+    // so seats are spaced evenly along the actual perimeter (not just by angle).
+    const samples = 720;
+    const angles = [];
+    const cumLen = [0];
+    for(let i = 0; i <= samples; i++){
+      angles.push((2 * Math.PI * i / samples) - Math.PI / 2);
+    }
+    for(let i = 1; i <= samples; i++){
+      const t0 = angles[i - 1], t1 = angles[i];
+      const dx = radiusX * (Math.cos(t1) - Math.cos(t0));
+      const dy = radiusY * (Math.sin(t1) - Math.sin(t0));
+      cumLen.push(cumLen[i - 1] + Math.sqrt(dx * dx + dy * dy));
+    }
+    const totalLen = cumLen[samples];
+
+    function angleAtArcFraction(frac){
+      const target = frac * totalLen;
+      let lo = 0, hi = samples;
+      while(lo < hi){
+        const mid = (lo + hi) >> 1;
+        if(cumLen[mid] < target) lo = mid + 1; else hi = mid;
+      }
+      return angles[lo];
+    }
 
     for(let i = 0; i < total; i++){
-      const angle = (2 * Math.PI * i / total) - Math.PI / 2;
-      const x = 75 + radius * Math.cos(angle);
-      const y = 75 + radius * Math.sin(angle);
+      const angle = angleAtArcFraction(i / total);
+      const x = cx + radiusX * Math.cos(angle);
+      const y = cy + radiusY * Math.sin(angle);
 
       const seat = document.createElement('div');
       const isGold = i < goldCount;
@@ -693,7 +720,7 @@
     }
   }
 
-    const tablesRow = document.getElementById('tablesRow');
+  const tablesRow = document.getElementById('tablesRow');
 
   const configs = [
     {total:6, gold:2, caption:'Стол 1 — 6 игроков'},
