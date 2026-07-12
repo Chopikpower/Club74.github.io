@@ -2168,8 +2168,8 @@ function loadPointsPreset() {
     if (value === 'small') {
         $('prizePlacesCount').value = 3;
         state.settings.prizePlaces = [
-            { place: 1, percentage: 60 },
-            { place: 2, percentage: 30 },
+            { place: 1, percentage: 52 },
+            { place: 2, percentage: 38 },
             { place: 3, percentage: 10 }
         ];
     }
