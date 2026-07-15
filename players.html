@@ -177,13 +177,17 @@
     <div class="players-card">
         <h1>
             👥 Игроки клуба
-            <button class="btn btn-success" id="openRegisterBtn">📝 Регистрация</button>
+            <span style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="btn btn-secondary" id="exportPlayersBtn" style="display:none;">📥 Скачать список (Имя + телефон)</button>
+                <button class="btn btn-success" id="openRegisterBtn">📝 Регистрация</button>
+            </span>
         </h1>
 
         <div class="table-wrap">
             <table>
                 <thead>
                     <tr>
+                        <th>№</th>
                         <th>Имя</th>
                         <th>Очки</th>
                         <th>Кубки</th>
@@ -443,7 +447,13 @@ function subscribeRealtime() {
 }
 
 function sortPlayers() {
-    players.sort((a, b) => (Number(b.points) || 0) - (Number(a.points) || 0));
+    players.sort((a, b) => {
+        const pointsDiff = (Number(b.points) || 0) - (Number(a.points) || 0);
+        if (pointsDiff !== 0) return pointsDiff;
+        const cupsDiff = (Number(b.cups) || 0) - (Number(a.cups) || 0);
+        if (cupsDiff !== 0) return cupsDiff;
+        return String(a.name || '').localeCompare(String(b.name || ''), 'ru');
+    });
 }
 
 /************************************************************
@@ -462,9 +472,10 @@ function renderTable() {
     }
     $('emptyState').style.display = 'none';
 
-    players.forEach(p => {
+    players.forEach((p, index) => {
         const tr = document.createElement('tr');
         let rowHtml = `
+            <td class="num">${index + 1}</td>
             <td>${escapeHtml(p.name)}</td>
             <td class="num">${Number(p.points) || 0}</td>
             <td class="num">🏆 ${Number(p.cups) || 0}</td>
@@ -489,6 +500,7 @@ function updateAuthUI() {
     $('userRole').textContent = isAdmin ? 'Админ' : 'Гость';
     $('loginBtn').style.display = isAdmin ? 'none' : 'inline-block';
     $('logoutBtn').style.display = isAdmin ? 'inline-block' : 'none';
+    $('exportPlayersBtn').style.display = isAdmin ? 'inline-block' : 'none';
     applyRegistrationVisibility();
     renderTable();
 }
@@ -612,6 +624,32 @@ $('submitRegisterBtn').onclick = async () => {
     agreementAccepted = false;
 
     await savePlayers();
+};
+
+/************************************************************
+ * EXPORT (Имя + Сотовый номер), только админ
+ ************************************************************/
+$('exportPlayersBtn').onclick = () => {
+    if (!isAdmin) return;
+    if (!players.length) {
+        alert('Список игроков пуст — нечего сохранять.');
+        return;
+    }
+
+    const lines = players.map((p, i) => `${i + 1}. ${p.name || '—'} — ${p.phone || '—'}`);
+    const content = 'Список игроков (Имя — Сотовый номер)\n\n' + lines.join('\n');
+
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const dateStr = new Date().toISOString().slice(0, 10);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `players_${dateStr}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 };
 
 /************************************************************
