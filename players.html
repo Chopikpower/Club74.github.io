@@ -211,7 +211,7 @@
             <label>Сотовый номер</label>
             <input type="tel" id="regPhone" placeholder="+7 900 000-00-00">
         </div>
-        <div class="form-row">
+        <div class="form-row" id="regAdminFields" style="display:none;">
             <div class="form-group">
                 <label>Очки</label>
                 <input type="number" id="regPoints" value="0" min="0">
@@ -428,6 +428,7 @@ $('openRegisterBtn').onclick = () => {
     $('regPhone').value = '';
     $('regPoints').value = 0;
     $('regCups').value = 0;
+    $('regAdminFields').style.display = isAdmin ? 'grid' : 'none';
     $('registerModal').classList.add('active');
 };
 
@@ -436,8 +437,9 @@ $('cancelRegisterBtn').onclick = () => $('registerModal').classList.remove('acti
 $('submitRegisterBtn').onclick = async () => {
     const name = $('regName').value.trim();
     const phone = $('regPhone').value.trim();
-    const points = parseInt($('regPoints').value, 10) || 0;
-    const cups = parseInt($('regCups').value, 10) || 0;
+    // Очки и кубки при регистрации задаёт только админ, гость всегда начинает с 0.
+    const points = isAdmin ? (parseInt($('regPoints').value, 10) || 0) : 0;
+    const cups = isAdmin ? (parseInt($('regCups').value, 10) || 0) : 0;
 
     if (!name) { alert('Введите имя'); return; }
     if (!phone) { alert('Введите сотовый номер'); return; }
