@@ -199,6 +199,25 @@
     </div>
 </div>
 
+<!-- Agreement modal (shown first) -->
+<div class="modal" id="agreementModal">
+    <div class="modal-content">
+        <div class="modal-header">📄 Соглашение участника</div>
+        <div id="agreementTextView" style="color:var(--text-color); line-height:1.6; white-space:pre-wrap;"></div>
+        <textarea id="agreementTextEdit" style="display:none; width:100%; min-height:160px; margin-top:10px; padding:10px; background:var(--bg-color); border:1px solid var(--border-color); border-radius:6px; color:var(--text-color); font-family:inherit; font-size:14px;"></textarea>
+        <div class="form-group" id="agreeCheckboxWrap" style="display:flex; align-items:center; gap:10px; margin-top:20px;">
+            <input type="checkbox" id="agreeCheckbox" style="width:auto;">
+            <label for="agreeCheckbox" style="margin:0; color:var(--text-color); cursor:pointer;">Я принимаю условия соглашения</label>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" id="editAgreementBtn" style="display:none;">✏️ Редактировать текст</button>
+            <button class="btn btn-primary" id="saveAgreementBtn" style="display:none;">💾 Сохранить текст</button>
+            <button class="btn btn-secondary" id="cancelAgreementBtn">Отмена</button>
+            <button class="btn btn-success" id="agreeContinueBtn" disabled>Далее →</button>
+        </div>
+    </div>
+</div>
+
 <!-- Registration modal -->
 <div class="modal" id="registerModal">
     <div class="modal-content">
@@ -285,6 +304,13 @@ let players = [];
 let isAdmin = localStorage.getItem('pokerTimerIsAdmin') === 'true';
 let adminPassword = localStorage.getItem('pokerTimerPassword') || 'secret';
 let editingId = null;
+let agreementAccepted = false;
+
+const DEFAULT_AGREEMENT_TEXT = `Регистрируясь в клубе, я подтверждаю, что:
+1. Указанные мной данные (имя и номер телефона) достоверны.
+2. Мой номер телефона будет использоваться администрацией клуба только для связи по организационным вопросам и не будет виден другим участникам.
+3. Я согласен с правилами проведения турниров клуба.`;
+let agreementText = DEFAULT_AGREEMENT_TEXT;
 
 const $ = id => document.getElementById(id);
 
@@ -299,8 +325,39 @@ async function initSupabase() {
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     await refreshAdminPasswordFromCloud();
+    await loadAgreementText();
     await loadPlayers();
     subscribeRealtime();
+}
+
+async function loadAgreementText() {
+    try {
+        const { data, error } = await supabaseClient
+            .from('app_state')
+            .select('value')
+            .eq('key', 'players_agreement')
+            .maybeSingle();
+        if (!error && data && data.value && data.value.text) {
+            agreementText = String(data.value.text);
+        }
+    } catch (e) {
+        console.warn('Не удалось получить текст соглашения:', e);
+    }
+}
+
+async function saveAgreementText(text) {
+    try {
+        const { error } = await supabaseClient
+            .from('app_state')
+            .upsert({
+                key: 'players_agreement',
+                value: { text },
+                updated_at: new Date().toISOString()
+            });
+        if (error) console.error('Ошибка сохранения соглашения:', error);
+    } catch (e) {
+        console.error('saveAgreementText error:', e);
+    }
 }
 
 async function refreshAdminPasswordFromCloud() {
@@ -366,6 +423,9 @@ function subscribeRealtime() {
             if (payload.new.key === 'settings' && payload.new.value && payload.new.value.adminPassword) {
                 adminPassword = String(payload.new.value.adminPassword);
             }
+            if (payload.new.key === 'players_agreement' && payload.new.value && payload.new.value.text) {
+                agreementText = String(payload.new.value.text);
+            }
         })
         .subscribe();
 }
@@ -421,16 +481,74 @@ function updateAuthUI() {
 }
 
 /************************************************************
- * REGISTRATION (доступно гостям)
+ * AGREEMENT (шаг перед регистрацией)
  ************************************************************/
 $('openRegisterBtn').onclick = () => {
+    openAgreementModal();
+};
+
+function openAgreementModal() {
+    agreementAccepted = false;
+    $('agreeCheckbox').checked = false;
+    $('agreeContinueBtn').disabled = true;
+
+    $('agreementTextView').style.display = 'block';
+    $('agreementTextEdit').style.display = 'none';
+    $('agreementTextView').textContent = agreementText;
+
+    $('editAgreementBtn').style.display = isAdmin ? 'inline-block' : 'none';
+    $('saveAgreementBtn').style.display = 'none';
+
+    $('agreementModal').classList.add('active');
+}
+
+$('cancelAgreementBtn').onclick = () => $('agreementModal').classList.remove('active');
+
+$('agreeCheckbox').onchange = () => {
+    $('agreeContinueBtn').disabled = !$('agreeCheckbox').checked;
+};
+
+$('editAgreementBtn').onclick = () => {
+    $('agreementTextEdit').value = agreementText;
+    $('agreementTextView').style.display = 'none';
+    $('agreementTextEdit').style.display = 'block';
+    $('editAgreementBtn').style.display = 'none';
+    $('saveAgreementBtn').style.display = 'inline-block';
+};
+
+$('saveAgreementBtn').onclick = async () => {
+    const newText = $('agreementTextEdit').value.trim() || DEFAULT_AGREEMENT_TEXT;
+    agreementText = newText;
+    $('agreementTextView').textContent = agreementText;
+    $('agreementTextView').style.display = 'block';
+    $('agreementTextEdit').style.display = 'none';
+    $('editAgreementBtn').style.display = 'inline-block';
+    $('saveAgreementBtn').style.display = 'none';
+    await saveAgreementText(newText);
+};
+
+$('agreeContinueBtn').onclick = () => {
+    if (!$('agreeCheckbox').checked) return;
+    agreementAccepted = true;
+    $('agreementModal').classList.remove('active');
+    openRegisterForm();
+};
+
+/************************************************************
+ * REGISTRATION (доступно гостям, только после принятия соглашения)
+ ************************************************************/
+function openRegisterForm() {
+    if (!agreementAccepted) {
+        openAgreementModal();
+        return;
+    }
     $('regName').value = '';
     $('regPhone').value = '';
     $('regPoints').value = 0;
     $('regCups').value = 0;
     $('regAdminFields').style.display = isAdmin ? 'grid' : 'none';
     $('registerModal').classList.add('active');
-};
+}
 
 $('cancelRegisterBtn').onclick = () => $('registerModal').classList.remove('active');
 
@@ -454,6 +572,7 @@ $('submitRegisterBtn').onclick = async () => {
     sortPlayers();
     renderTable();
     $('registerModal').classList.remove('active');
+    agreementAccepted = false;
 
     await savePlayers();
 };
