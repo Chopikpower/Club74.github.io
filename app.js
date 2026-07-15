@@ -3122,7 +3122,9 @@ async function init() {
     state.registration.agreementText = localStorage.getItem('pokerRegistrationText') || defaultRegistrationText();
 
     addRulesButton();
-    addRegistrationButton();
+    // Кнопка "📝 Регистрация" на главной странице отключена:
+    // регистрация игроков теперь происходит на странице players.html.
+    // addRegistrationButton();
     ensureRulesPage();
     ensureTournamentPage();
     bindEvents();
